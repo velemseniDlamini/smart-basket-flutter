@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Basket Flutter Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .phone-frame {
+            width: 375px;
+            height: 667px;
+            background: #000;
+            border-radius: 25px;
+            padding: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .screen {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            padding: 40px 30px;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.8;
+            margin-bottom: 40px;
+        }
+        
+        .form {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            width: 100%;
+            color: #333;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .form h3 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #2d3748;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        .input-group input:focus {
+            border-color: #667eea;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .features {
+            position: absolute;
+            right: 50px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            max-width: 300px;
+        }
+        
+        .features h3 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        
+        .feature {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            color: #4a5568;
+        }
+        
+        .feature-icon {
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .demo-info {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.1);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            padding: 20px 30px;
+            border-radius: 15px;
+            color: white;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .status {
+            display: inline-flex;
+            align-items: center;
+            background: #10b981;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .status::before {
+            content: '●';
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @media (max-width: 768px) {
+            .features {
+                position: static;
+                transform: none;
+                margin-top: 30px;
+                max-width: 100%;
+            }
+            
+            body {
+                flex-direction: column;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="phone-frame">
+        <div class="screen">
+            <div class="logo">🛒</div>
+            <div class="title">Smart Basket</div>
+            <div class="subtitle">AI-powered shopping assistant</div>
+            
+            <div class="form">
+                <h3>Flutter Demo</h3>
+                <div class="input-group">
+                    <input type="text" placeholder="Full Name" value="Demo User">
+                </div>
+                <div class="input-group">
+                    <input type="email" placeholder="Email" value="demo@smartbasket.com">
+                </div>
+                <button class="btn" onclick="showDemo()">Get Started</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="features">
+        <h3>Flutter Features</h3>
+        <div class="feature">
+            <div class="feature-icon">📱</div>
+            <div>
+                <strong>Real-time Camera</strong><br>
+                <small>Google ML Kit integration</small>
+            </div>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">🤖</div>
+            <div>
+                <strong>AI Text Recognition</strong><br>
+                <small>5x faster than web version</small>
+            </div>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">📦</div>
+            <div>
+                <strong>Smart Basket</strong><br>
+                <small>Auto product detection</small>
+            </div>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">🧾</div>
+            <div>
+                <strong>Digital Receipts</strong><br>
+                <small>Instant generation</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="demo-info">
+        <div class="status">Flutter App Running</div>
+        <div><strong>Smart Basket Flutter Demo</strong></div>
+        <div>Complete mobile shopping experience with Google ML Kit</div>
+    </div>
+
+    <script>
+        function showDemo() {
+            alert('🎉 Flutter Demo Features:\n\n' +
+                  '✅ Login Screen - Material Design 3\n' +
+                  '✅ Store Selection - 6 SA retailers\n' +
+                  '✅ Camera Scanner - Real-time ML Kit\n' +
+                  '✅ Shopping Basket - Live updates\n' +
+                  '✅ Receipt Generation - Digital checkout\n\n' +
+                  'The actual Flutter app is running on:\n' +
+                  'http://localhost:8080\n\n' +
+                  'This demo shows the mobile experience!');
+        }
+        
+        // Simulate app loading
+        setTimeout(() => {
+            console.log('Flutter Smart Basket Demo loaded successfully!');
+        }, 1000);
+    </script>
+</body>
+</html>

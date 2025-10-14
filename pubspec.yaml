@@ -1,0 +1,43 @@
+name: smart_basket_flutter
+description: "Smart Basket - AI-powered shopping assistant with real-time text recognition"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  
+  # Google ML Kit for text recognition
+  google_mlkit_text_recognition: ^0.13.0
+  
+  # Camera functionality
+  camera: ^0.11.0+2
+  
+  # Permissions
+  permission_handler: ^11.3.1
+  
+  # State management
+  provider: ^6.1.2
+  
+  # Local storage
+  shared_preferences: ^2.2.3
+  sqflite: ^2.3.3+1
+  
+  # UI components
+  flutter_svg: ^2.0.10+1
+  
+  # HTTP requests (if needed for future API integration)
+  http: ^1.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

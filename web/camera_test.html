@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        video {
+            width: 100%;
+            max-width: 640px;
+            height: auto;
+            border: 2px solid #333;
+            border-radius: 8px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .error {
+            color: red;
+            background: #ffe6e6;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            color: green;
+            background: #e6ffe6;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .info {
+            background: #e6f3ff;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 Camera Test Page</h1>
+        <p>This page tests basic camera functionality to help debug camera issues.</p>
+        
+        <div class="info">
+            <strong>Browser:</strong> <span id="browserInfo"></span><br>
+            <strong>User Agent:</strong> <span id="userAgent"></span><br>
+            <strong>HTTPS:</strong> <span id="httpsStatus"></span>
+        </div>
+
+        <div>
+            <button onclick="testCameraSupport()">1. Test Camera Support</button>
+            <button onclick="testBasicCamera()" id="basicCameraBtn">2. Test Basic Camera</button>
+            <button onclick="testBackCamera()" id="backCameraBtn">3. Test Back Camera</button>
+            <button onclick="stopCamera()" id="stopBtn" disabled>Stop Camera</button>
+        </div>
+
+        <div id="messages"></div>
+        
+        <video id="videoElement" autoplay muted playsinline style="display: none;"></video>
+        
+        <div class="log" id="logOutput"></div>
+    </div>
+
+    <script>
+        let currentStream = null;
+        const video = document.getElementById('videoElement');
+        const messages = document.getElementById('messages');
+        const logOutput = document.getElementById('logOutput');
+
+        // Initialize page
+        document.getElementById('browserInfo').textContent = getBrowserInfo();
+        document.getElementById('userAgent').textContent = navigator.userAgent;
+        document.getElementById('httpsStatus').textContent = location.protocol === 'https:' ? 'Yes' : 'No';
+
+        function getBrowserInfo() {
+            const ua = navigator.userAgent;
+            if (ua.includes('Chrome')) return 'Chrome';
+            if (ua.includes('Firefox')) return 'Firefox';
+            if (ua.includes('Safari')) return 'Safari';
+            if (ua.includes('Edge')) return 'Edge';
+            return 'Unknown';
+        }
+
+        function log(message) {
+            console.log(message);
+            logOutput.innerHTML += new Date().toLocaleTimeString() + ': ' + message + '\n';
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+
+        function showMessage(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = message;
+            messages.appendChild(div);
+        }
+
+        function clearMessages() {
+            messages.innerHTML = '';
+        }
+
+        async function testCameraSupport() {
+            clearMessages();
+            log('Testing camera support...');
+
+            // Test 1: Check if mediaDevices exists
+            if (!navigator.mediaDevices) {
+                showMessage('❌ navigator.mediaDevices not supported', 'error');
+                log('ERROR: navigator.mediaDevices not supported');
+                return;
+            }
+            log('✅ navigator.mediaDevices exists');
+
+            // Test 2: Check if getUserMedia exists
+            if (!navigator.mediaDevices.getUserMedia) {
+                showMessage('❌ getUserMedia not supported', 'error');
+                log('ERROR: getUserMedia not supported');
+                return;
+            }
+            log('✅ getUserMedia exists');
+
+            // Test 3: Check available devices
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                log(`Found ${videoDevices.length} video devices`);
+                
+                if (videoDevices.length === 0) {
+                    showMessage('❌ No video devices found', 'error');
+                    return;
+                }
+
+                showMessage(`✅ Camera support detected! Found ${videoDevices.length} video device(s)`, 'success');
+                videoDevices.forEach((device, index) => {
+                    log(`Device ${index + 1}: ${device.label || 'Camera ' + (index + 1)}`);
+                });
+
+            } catch (error) {
+                showMessage('❌ Error checking devices: ' + error.message, 'error');
+                log('ERROR checking devices: ' + error);
+            }
+        }
+
+        async function testBasicCamera() {
+            clearMessages();
+            log('Testing basic camera access...');
+
+            try {
+                log('Requesting basic camera access...');
+                currentStream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: false
+                });
+                
+                log('✅ Camera stream obtained');
+                video.srcObject = currentStream;
+                video.style.display = 'block';
+                
+                await video.play();
+                log('✅ Video playback started');
+                
+                showMessage('✅ Basic camera test successful!', 'success');
+                document.getElementById('stopBtn').disabled = false;
+
+            } catch (error) {
+                showMessage('❌ Basic camera test failed: ' + error.message, 'error');
+                log('ERROR: Basic camera test failed: ' + error);
+                
+                // Provide specific error guidance
+                if (error.name === 'NotAllowedError') {
+                    showMessage('🔒 Camera permission denied. Please allow camera access and try again.', 'error');
+                } else if (error.name === 'NotFoundError') {
+                    showMessage('📷 No camera found. Please check if a camera is connected.', 'error');
+                } else if (error.name === 'NotReadableError') {
+                    showMessage('⚠️ Camera is being used by another application. Please close other apps and try again.', 'error');
+                }
+            }
+        }
+
+        async function testBackCamera() {
+            clearMessages();
+            log('Testing back camera access...');
+
+            try {
+                log('Requesting back camera access...');
+                currentStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment'
+                    },
+                    audio: false
+                });
+                
+                log('✅ Back camera stream obtained');
+                video.srcObject = currentStream;
+                video.style.display = 'block';
+                
+                await video.play();
+                log('✅ Video playback started');
+                
+                showMessage('✅ Back camera test successful!', 'success');
+                document.getElementById('stopBtn').disabled = false;
+
+            } catch (error) {
+                showMessage('❌ Back camera test failed: ' + error.message, 'error');
+                log('ERROR: Back camera test failed: ' + error);
+                
+                // Try fallback to any camera
+                log('Trying fallback to any available camera...');
+                try {
+                    currentStream = await navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: false
+                    });
+                    
+                    video.srcObject = currentStream;
+                    video.style.display = 'block';
+                    await video.play();
+                    
+                    showMessage('✅ Fallback camera test successful (front camera used)', 'success');
+                    document.getElementById('stopBtn').disabled = false;
+                    
+                } catch (fallbackError) {
+                    showMessage('❌ All camera tests failed: ' + fallbackError.message, 'error');
+                    log('ERROR: Fallback camera test failed: ' + fallbackError);
+                }
+            }
+        }
+
+        function stopCamera() {
+            log('Stopping camera...');
+            
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => {
+                    track.stop();
+                    log('Stopped track: ' + track.kind);
+                });
+                currentStream = null;
+            }
+            
+            video.srcObject = null;
+            video.style.display = 'none';
+            document.getElementById('stopBtn').disabled = true;
+            
+            showMessage('✅ Camera stopped', 'success');
+            log('✅ Camera stopped successfully');
+        }
+
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            log('Page loaded, running automatic camera support test...');
+            testCameraSupport();
+        });
+    </script>
+</body>
+</html>

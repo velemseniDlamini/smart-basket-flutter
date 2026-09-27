@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import '../services/camera_service.dart';
+import '../services/gemini_vision_service.dart';
 import '../services/text_recognition_service.dart';
 import '../models/detected_product.dart';
 
@@ -23,12 +23,15 @@ class CameraScanner extends StatefulWidget {
 
 class _CameraScannerState extends State<CameraScanner> {
   final CameraService _cameraService = CameraService();
+  final GeminiVisionService _geminiVisionService = GeminiVisionService();
   final TextRecognitionService _textRecognitionService = TextRecognitionService();
   
   bool _isInitialized = false;
   bool _isScanning = false;
+  bool _isAnalyzingImage = false;
   List<DetectedProduct> _detectedProducts = [];
   RecognizedText? _recognizedText;
+  List<GeminiProductResult> _lastImageProducts = [];
   Timer? _scanTimer;
 
   @override
@@ -89,6 +92,43 @@ class _CameraScannerState extends State<CameraScanner> {
     }
   }
 
+  Future<void> _analyzeCurrentImage() async {
+    if (_isAnalyzingImage) return;
+    setState(() => _isAnalyzingImage = true);
+
+    try {
+      final imageBytes = await _cameraService.captureStillImage();
+      if (imageBytes == null) {
+        throw const GeminiVisionException('Could not capture a camera image.');
+      }
+      final result = await _geminiVisionService.analyzeImage(imageBytes);
+      if (!mounted) return;
+      setState(() => _lastImageProducts = result.products);
+
+      final productsToAdd = result.products
+          .where((product) => product.price != null && product.price! > 0)
+          .where((product) => !_detectedProducts.any(
+                (existing) =>
+                    existing.productName.toLowerCase() == product.name.toLowerCase(),
+              ))
+          .map(
+            (product) => DetectedProduct(
+              productName: product.name,
+              price: product.price!,
+              confidence: product.confidence,
+              boundingBox: Rect.zero,
+              timestamp: DateTime.now(),
+            ),
+          )
+          .toList();
+      _updateDetectedProducts(productsToAdd);
+    } catch (e) {
+      if (mounted) _showError('Image analysis failed: $e');
+    } finally {
+      if (mounted) setState(() => _isAnalyzingImage = false);
+    }
+  }
+
   void _updateDetectedProducts(List<DetectedProduct> newProducts) {
     for (final product in newProducts) {
       // Check if product is already detected (avoid duplicates)
@@ -122,6 +162,7 @@ class _CameraScannerState extends State<CameraScanner> {
     _scanTimer?.cancel();
     _cameraService.stopPreview();
     _cameraService.dispose();
+    _geminiVisionService.dispose();
     _textRecognitionService.dispose();
     super.dispose();
   }
@@ -180,13 +221,15 @@ class _CameraScannerState extends State<CameraScanner> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _isScanning ? Colors.green : Colors.orange,
+                    color: _isScanning || _isAnalyzingImage
+                      ? Colors.green
+                      : Colors.orange,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (_isScanning)
+                      if (_isScanning || _isAnalyzingImage)
                         const SizedBox(
                           width: 12,
                           height: 12,
@@ -199,7 +242,7 @@ class _CameraScannerState extends State<CameraScanner> {
                         const Icon(Icons.search, color: Colors.white, size: 16),
                       const SizedBox(width: 4),
                       Text(
-                        _isScanning ? 'Scanning...' : 'Ready',
+                        _isScanning || _isAnalyzingImage ? 'Scanning...' : 'Ready',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -228,7 +271,7 @@ class _CameraScannerState extends State<CameraScanner> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Products Detected: ${_detectedProducts.length}',
+                    'Products Seen: ${_lastImageProducts.length}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -246,6 +289,22 @@ class _CameraScannerState extends State<CameraScanner> {
                       textAlign: TextAlign.center,
                     ),
                   ],
+                  if (_lastImageProducts.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Image: ${_lastImageProducts.map((product) => product.name).join(', ')}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: _isAnalyzingImage ? null : _analyzeCurrentImage,
+                    icon: const Icon(Icons.document_scanner),
+                    label: const Text('Analyze Image'),
+                  ),
                 ],
               ),
             ),

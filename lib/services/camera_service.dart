@@ -76,6 +76,22 @@ class CameraService {
     }
   }
 
+  Future<Uint8List?> captureStillImage() async {
+    final controller = _controller;
+    if (controller == null || !_isInitialized) return null;
+
+    final resumeStream = controller.value.isStreamingImages;
+    if (resumeStream) await controller.stopImageStream();
+    try {
+      final image = await controller.takePicture();
+      return await image.readAsBytes();
+    } finally {
+      if (resumeStream && _isInitialized && !controller.value.isStreamingImages) {
+        await controller.startImageStream(_onImageStream);
+      }
+    }
+  }
+
   /// Handle image stream (to be overridden by callback)
   Function(CameraImage)? _imageStreamCallback;
   

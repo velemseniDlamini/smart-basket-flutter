@@ -1,11 +1,9 @@
-import 'dart:async';
-import 'dart:html' as html;
-import 'dart:ui' as ui;
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:ui_web' as ui_web;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/web_camera_service.dart';
+import '../services/gemini_vision_service.dart';
 import '../models/detected_product.dart';
 
 class WebCameraScanner extends StatefulWidget {
@@ -24,13 +22,15 @@ class WebCameraScanner extends StatefulWidget {
 
 class _WebCameraScannerState extends State<WebCameraScanner> {
   final WebCameraService _cameraService = WebCameraService();
+  final GeminiVisionService _geminiVisionService = GeminiVisionService();
   
   bool _isInitialized = false;
   bool _isScanning = false;
   String? _error;
   List<DetectedProduct> _detectedProducts = [];
-  Timer? _scanTimer;
   String _viewId = 'camera-view-${DateTime.now().millisecondsSinceEpoch}';
+  List<GeminiProductResult> _lastImageProducts = [];
+  String _recognizedText = '';
 
   @override
   void initState() {
@@ -74,9 +74,6 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
         print('WebCameraScanner: Registering video element...');
         _registerVideoElement();
         
-        // Start periodic scanning
-        print('WebCameraScanner: Starting periodic scanning...');
-        _startPeriodicScanning();
       } else {
         print('WebCameraScanner: Camera initialization failed');
         print('WebCameraScanner: Error from service: ${_cameraService.error}');
@@ -104,15 +101,6 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
     }
   }
 
-  void _startPeriodicScanning() {
-    // Scan every 2 seconds for better performance on mobile
-    _scanTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (!_isScanning && _isInitialized) {
-        _scanFrame();
-      }
-    });
-  }
-
   Future<void> _scanFrame() async {
     if (_isScanning || !_isInitialized) return;
 
@@ -122,59 +110,43 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
 
     try {
       final frameData = await _cameraService.captureFrame();
-      if (frameData != null) {
-        // Simulate text recognition for demo
-        // In a real implementation, you'd use a web-compatible OCR library
-        await _simulateTextRecognition();
+      if (frameData == null) {
+        throw const GeminiVisionException('Could not capture a camera image.');
+      }
+      final result = await _geminiVisionService.analyzeImage(frameData);
+      if (mounted) {
+        setState(() {
+          _lastImageProducts = result.products;
+          _recognizedText = result.recognizedText;
+        });
+      }
+      for (final detected in result.products) {
+        if (detected.price == null || detected.price! <= 0) continue;
+        final alreadyAdded = _detectedProducts.any(
+          (product) => product.productName.toLowerCase() == detected.name.toLowerCase(),
+        );
+        if (alreadyAdded) continue;
+        final product = DetectedProduct(
+          productName: detected.name,
+          price: detected.price!,
+          confidence: detected.confidence,
+          boundingBox: Rect.zero,
+          timestamp: DateTime.now(),
+        );
+        _detectedProducts.add(product);
+        widget.onProductDetected(product);
       }
     } catch (e) {
-      print('Error scanning frame: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Image analysis failed: $e')),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
           _isScanning = false;
         });
-      }
-    }
-  }
-
-  Future<void> _simulateTextRecognition() async {
-    // Simulate processing delay
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // Simulate finding products (for demo purposes)
-    if (_detectedProducts.length < 3) {
-      final demoProducts = [
-        DetectedProduct(
-          productName: 'Coca Cola 330ml',
-          price: 15.99,
-          confidence: 0.85,
-          boundingBox: const Rect.fromLTWH(100, 200, 150, 50),
-          timestamp: DateTime.now(),
-        ),
-        DetectedProduct(
-          productName: 'Bread White Loaf',
-          price: 12.50,
-          confidence: 0.92,
-          boundingBox: const Rect.fromLTWH(200, 300, 180, 60),
-          timestamp: DateTime.now(),
-        ),
-        DetectedProduct(
-          productName: 'Milk 1L',
-          price: 18.75,
-          confidence: 0.78,
-          boundingBox: const Rect.fromLTWH(150, 250, 120, 80),
-          timestamp: DateTime.now(),
-        ),
-      ];
-
-      // Randomly add a product
-      if (DateTime.now().millisecond % 3 == 0) {
-        final randomProduct = demoProducts[_detectedProducts.length];
-        setState(() {
-          _detectedProducts.add(randomProduct);
-        });
-        widget.onProductDetected(randomProduct);
       }
     }
   }
@@ -188,7 +160,7 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
 
   @override
   void dispose() {
-    _scanTimer?.cancel();
+    _geminiVisionService.dispose();
     _cameraService.dispose();
     super.dispose();
   }
@@ -387,17 +359,17 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Products Detected: ${_detectedProducts.length}',
+                    'Products Seen: ${_lastImageProducts.length}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (_detectedProducts.isNotEmpty) ...[
+                  if (_lastImageProducts.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'Latest: ${_detectedProducts.last.productName} - R${_detectedProducts.last.price.toStringAsFixed(2)}',
+                      'Latest: ${_lastImageProducts.last.name}',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
@@ -405,14 +377,30 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
                       textAlign: TextAlign.center,
                     ),
                   ],
+                  if (_recognizedText.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      _recognizedText,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white60, fontSize: 12),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   Text(
-                    'Point camera at products to scan',
+                    'Point camera at products, then analyze the image',
                     style: const TextStyle(
                       color: Colors.white54,
                       fontSize: 12,
                     ),
                     textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: _isScanning ? null : _scanFrame,
+                    icon: const Icon(Icons.document_scanner),
+                    label: const Text('Analyze Image'),
                   ),
                 ],
               ),

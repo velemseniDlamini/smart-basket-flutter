@@ -1,3 +1,4 @@
+import 'dart:async';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:ui_web' as ui_web;
 import 'package:flutter/foundation.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../services/web_camera_service.dart';
 import '../services/gemini_vision_service.dart';
 import '../models/detected_product.dart';
+import '../utils/currency.dart';
 
 class WebCameraScanner extends StatefulWidget {
   final Function(DetectedProduct) onProductDetected;
@@ -23,10 +25,12 @@ class WebCameraScanner extends StatefulWidget {
 class _WebCameraScannerState extends State<WebCameraScanner> {
   final WebCameraService _cameraService = WebCameraService();
   final GeminiVisionService _geminiVisionService = GeminiVisionService();
-  
+
   bool _isInitialized = false;
   bool _isScanning = false;
   String? _error;
+  String? _analysisError;
+  Timer? _scanTimer;
   List<DetectedProduct> _detectedProducts = [];
   String _viewId = 'camera-view-${DateTime.now().millisecondsSinceEpoch}';
   List<GeminiProductResult> _lastImageProducts = [];
@@ -40,7 +44,7 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
 
   Future<void> _initializeCamera() async {
     print('WebCameraScanner: Starting camera initialization...');
-    
+
     if (!kIsWeb) {
       print('WebCameraScanner: Not on web platform');
       setState(() {
@@ -53,7 +57,8 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
     if (!WebCameraService.isSupported) {
       print('WebCameraScanner: Camera not supported according to service');
       setState(() {
-        _error = 'Camera not supported in this browser. Please try Chrome or Safari.';
+        _error =
+            'Camera not supported in this browser. Please try Chrome or Safari.';
       });
       return;
     }
@@ -62,7 +67,7 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
     try {
       final success = await _cameraService.initialize();
       print('WebCameraScanner: Service initialization result: $success');
-      
+
       if (success && mounted) {
         print('WebCameraScanner: Camera initialized successfully');
         setState(() {
@@ -73,7 +78,7 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
         // Register the video element as a platform view
         print('WebCameraScanner: Registering video element...');
         _registerVideoElement();
-        
+        _startAutomaticScanning();
       } else {
         print('WebCameraScanner: Camera initialization failed');
         print('WebCameraScanner: Error from service: ${_cameraService.error}');
@@ -89,6 +94,16 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
         });
       }
     }
+  }
+
+  void _startAutomaticScanning() {
+    if (!GeminiVisionService.isConfigured) return;
+    _scanTimer?.cancel();
+    unawaited(_scanFrame());
+    _scanTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => unawaited(_scanFrame()),
+    );
   }
 
   void _registerVideoElement() {
@@ -109,6 +124,11 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
     });
 
     try {
+      if (!GeminiVisionService.isConfigured) {
+        throw const GeminiVisionException(
+          'Price reading needs a secure analysis service. Configure GEMINI_PROXY_URL and redeploy the app.',
+        );
+      }
       final frameData = await _cameraService.captureFrame();
       if (frameData == null) {
         throw const GeminiVisionException('Could not capture a camera image.');
@@ -118,12 +138,14 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
         setState(() {
           _lastImageProducts = result.products;
           _recognizedText = result.recognizedText;
+          _analysisError = null;
         });
       }
       for (final detected in result.products) {
         if (detected.price == null || detected.price! <= 0) continue;
         final alreadyAdded = _detectedProducts.any(
-          (product) => product.productName.toLowerCase() == detected.name.toLowerCase(),
+          (product) =>
+              product.productName.toLowerCase() == detected.name.toLowerCase(),
         );
         if (alreadyAdded) continue;
         final product = DetectedProduct(
@@ -138,6 +160,8 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
       }
     } catch (e) {
       if (mounted) {
+        _scanTimer?.cancel();
+        setState(() => _analysisError = e.toString());
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Image analysis failed: $e')),
         );
@@ -151,15 +175,9 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
     }
   }
 
-  Future<void> _switchCamera() async {
-    final success = await _cameraService.switchCamera();
-    if (success) {
-      _registerVideoElement();
-    }
-  }
-
   @override
   void dispose() {
+    _scanTimer?.cancel();
     _geminiVisionService.dispose();
     _cameraService.dispose();
     super.dispose();
@@ -274,7 +292,7 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
           Positioned.fill(
             child: HtmlElementView(viewType: _viewId),
           ),
-          
+
           // Top bar with controls
           Positioned(
             top: MediaQuery.of(context).padding.top + 16,
@@ -294,22 +312,11 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
                     onPressed: widget.onClose,
                   ),
                 ),
-                
-                // Switch camera button
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.flip_camera_ios, color: Colors.white),
-                    onPressed: _switchCamera,
-                  ),
-                ),
-                
+
                 // Scanning indicator
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: _isScanning ? Colors.green : Colors.orange,
                     borderRadius: BorderRadius.circular(16),
@@ -323,7 +330,8 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
                           height: 12,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       else
@@ -343,7 +351,7 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
               ],
             ),
           ),
-          
+
           // Bottom overlay with detected products
           Positioned(
             bottom: MediaQuery.of(context).padding.bottom + 16,
@@ -369,7 +377,8 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
                   if (_lastImageProducts.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'Latest: ${_lastImageProducts.last.name}',
+                      'Latest: ${_lastImageProducts.last.name}'
+                      '${_lastImageProducts.last.price == null ? '' : ' - ${formatZar(_lastImageProducts.last.price!)}'}',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
@@ -383,13 +392,29 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
                       _recognizedText,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white60, fontSize: 12),
+                      style:
+                          const TextStyle(color: Colors.white60, fontSize: 12),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                  if (!GeminiVisionService.isConfigured ||
+                      _analysisError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      _analysisError ??
+                          'Automatic price reading needs a secure analysis service.',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.amberAccent, fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
                   ],
                   const SizedBox(height: 8),
                   Text(
-                    'Point camera at products, then analyze the image',
+                    GeminiVisionService.isConfigured
+                        ? 'Point the rear camera at a price label. Reading runs automatically.'
+                        : 'Point the rear camera at a price label. Reading is unavailable until the analysis service is configured.',
                     style: const TextStyle(
                       color: Colors.white54,
                       fontSize: 12,
@@ -400,13 +425,17 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
                   ElevatedButton.icon(
                     onPressed: _isScanning ? null : _scanFrame,
                     icon: const Icon(Icons.document_scanner),
-                    label: const Text('Analyze Image'),
+                    label: Text(
+                      GeminiVisionService.isConfigured
+                          ? 'Read Price Label'
+                          : 'Check Price Reading Setup',
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          
+
           // Scanning frame overlay
           Positioned.fill(
             child: CustomPaint(
@@ -439,16 +468,22 @@ class ScanningFramePainter extends CustomPainter {
     canvas.drawLine(Offset(left, top), Offset(left + cornerLength, top), paint);
 
     // Top right
-    canvas.drawLine(Offset(left + frameSize - cornerLength, top), Offset(left + frameSize, top), paint);
-    canvas.drawLine(Offset(left + frameSize, top), Offset(left + frameSize, top + cornerLength), paint);
+    canvas.drawLine(Offset(left + frameSize - cornerLength, top),
+        Offset(left + frameSize, top), paint);
+    canvas.drawLine(Offset(left + frameSize, top),
+        Offset(left + frameSize, top + cornerLength), paint);
 
     // Bottom left
-    canvas.drawLine(Offset(left, top + frameSize - cornerLength), Offset(left, top + frameSize), paint);
-    canvas.drawLine(Offset(left, top + frameSize), Offset(left + cornerLength, top + frameSize), paint);
+    canvas.drawLine(Offset(left, top + frameSize - cornerLength),
+        Offset(left, top + frameSize), paint);
+    canvas.drawLine(Offset(left, top + frameSize),
+        Offset(left + cornerLength, top + frameSize), paint);
 
     // Bottom right
-    canvas.drawLine(Offset(left + frameSize - cornerLength, top + frameSize), Offset(left + frameSize, top + frameSize), paint);
-    canvas.drawLine(Offset(left + frameSize, top + frameSize), Offset(left + frameSize, top + frameSize - cornerLength), paint);
+    canvas.drawLine(Offset(left + frameSize - cornerLength, top + frameSize),
+        Offset(left + frameSize, top + frameSize), paint);
+    canvas.drawLine(Offset(left + frameSize, top + frameSize),
+        Offset(left + frameSize, top + frameSize - cornerLength), paint);
   }
 
   @override

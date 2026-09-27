@@ -34,12 +34,15 @@ def parse_image_request(payload):
 
 def analyze_image(image_bytes, mime_type, api_key):
     prompt = (
-        "Inspect this shopping image. Return only JSON with this shape: "
+        "Inspect this shopping image for retail product packaging and its shelf price tag. "
+        "Return only JSON with this shape: "
         '{"products":[{"name":"string","price":number|null,'
         '"confidence":number}],"recognized_text":"string"}. '
         "List distinct visible retail products. Set price only when a price is "
-        "clearly visible in the image; otherwise use null. Do not guess prices. "
-        "Include useful visible text such as labels or receipt text."
+        "clearly printed on a visible price label; otherwise use null. Read the "
+        "printed amount exactly, including South African rand values, and associate "
+        "it only with the product the label identifies. Do not infer or guess prices. "
+        "Include all legible text from the product and price label in recognized_text."
     )
     body = json.dumps(
         {

@@ -6,6 +6,7 @@ import '../services/camera_service.dart';
 import '../services/gemini_vision_service.dart';
 import '../services/text_recognition_service.dart';
 import '../models/detected_product.dart';
+import '../utils/currency.dart';
 
 class CameraScanner extends StatefulWidget {
   final Function(DetectedProduct) onProductDetected;
@@ -24,8 +25,9 @@ class CameraScanner extends StatefulWidget {
 class _CameraScannerState extends State<CameraScanner> {
   final CameraService _cameraService = CameraService();
   final GeminiVisionService _geminiVisionService = GeminiVisionService();
-  final TextRecognitionService _textRecognitionService = TextRecognitionService();
-  
+  final TextRecognitionService _textRecognitionService =
+      TextRecognitionService();
+
   bool _isInitialized = false;
   bool _isScanning = false;
   bool _isAnalyzingImage = false;
@@ -46,11 +48,11 @@ class _CameraScannerState extends State<CameraScanner> {
       setState(() {
         _isInitialized = true;
       });
-      
+
       // Set up image stream callback
       _cameraService.setImageStreamCallback(_processImage);
       await _cameraService.startPreview();
-      
+
       // Start periodic scanning
       _startPeriodicScanning();
     } else {
@@ -109,7 +111,8 @@ class _CameraScannerState extends State<CameraScanner> {
           .where((product) => product.price != null && product.price! > 0)
           .where((product) => !_detectedProducts.any(
                 (existing) =>
-                    existing.productName.toLowerCase() == product.name.toLowerCase(),
+                    existing.productName.toLowerCase() ==
+                    product.name.toLowerCase(),
               ))
           .map(
             (product) => DetectedProduct(
@@ -133,7 +136,9 @@ class _CameraScannerState extends State<CameraScanner> {
     for (final product in newProducts) {
       // Check if product is already detected (avoid duplicates)
       final existingIndex = _detectedProducts.indexWhere(
-        (existing) => existing.productName.toLowerCase() == product.productName.toLowerCase(),
+        (existing) =>
+            existing.productName.toLowerCase() ==
+            product.productName.toLowerCase(),
       );
 
       if (existingIndex == -1) {
@@ -185,7 +190,7 @@ class _CameraScannerState extends State<CameraScanner> {
           Positioned.fill(
             child: CameraPreview(_cameraService.controller!),
           ),
-          
+
           // Text detection overlay
           if (_recognizedText != null)
             Positioned.fill(
@@ -196,7 +201,7 @@ class _CameraScannerState extends State<CameraScanner> {
                 ),
               ),
             ),
-          
+
           // Top bar with close button and scanning indicator
           Positioned(
             top: MediaQuery.of(context).padding.top + 16,
@@ -216,14 +221,15 @@ class _CameraScannerState extends State<CameraScanner> {
                     onPressed: widget.onClose,
                   ),
                 ),
-                
+
                 // Scanning indicator
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: _isScanning || _isAnalyzingImage
-                      ? Colors.green
-                      : Colors.orange,
+                        ? Colors.green
+                        : Colors.orange,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
@@ -235,14 +241,17 @@ class _CameraScannerState extends State<CameraScanner> {
                           height: 12,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       else
                         const Icon(Icons.search, color: Colors.white, size: 16),
                       const SizedBox(width: 4),
                       Text(
-                        _isScanning || _isAnalyzingImage ? 'Scanning...' : 'Ready',
+                        _isScanning || _isAnalyzingImage
+                            ? 'Scanning...'
+                            : 'Ready',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -255,7 +264,7 @@ class _CameraScannerState extends State<CameraScanner> {
               ],
             ),
           ),
-          
+
           // Bottom overlay with detected products count
           Positioned(
             bottom: MediaQuery.of(context).padding.bottom + 16,
@@ -281,7 +290,7 @@ class _CameraScannerState extends State<CameraScanner> {
                   if (_detectedProducts.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'Latest: ${_detectedProducts.last.productName} - R${_detectedProducts.last.price.toStringAsFixed(2)}',
+                      'Latest: ${_detectedProducts.last.productName} - ${formatZar(_detectedProducts.last.price)}',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
@@ -295,7 +304,8 @@ class _CameraScannerState extends State<CameraScanner> {
                       'Image: ${_lastImageProducts.map((product) => product.name).join(', ')}',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 13),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -309,7 +319,7 @@ class _CameraScannerState extends State<CameraScanner> {
               ),
             ),
           ),
-          
+
           // Scanning frame overlay
           Positioned.fill(
             child: CustomPaint(
@@ -346,13 +356,13 @@ class TextDetectionPainter extends CustomPainter {
     for (final TextBlock block in recognizedText.blocks) {
       for (final TextLine line in block.lines) {
         final Rect boundingBox = _scaleRect(line.boundingBox, size);
-        
+
         // Draw filled rectangle
         canvas.drawRect(boundingBox, fillPaint);
-        
+
         // Draw border
         canvas.drawRect(boundingBox, paint);
-        
+
         // Draw text
         final textPainter = TextPainter(
           text: TextSpan(
@@ -372,7 +382,7 @@ class TextDetectionPainter extends CustomPainter {
           ),
           textDirection: TextDirection.ltr,
         );
-        
+
         textPainter.layout();
         textPainter.paint(
           canvas,
@@ -385,7 +395,7 @@ class TextDetectionPainter extends CustomPainter {
   Rect _scaleRect(Rect rect, Size canvasSize) {
     final double scaleX = canvasSize.width / cameraPreviewSize.width;
     final double scaleY = canvasSize.height / cameraPreviewSize.height;
-    
+
     return Rect.fromLTRB(
       rect.left * scaleX,
       rect.top * scaleY,
@@ -418,16 +428,22 @@ class ScanningFramePainter extends CustomPainter {
     canvas.drawLine(Offset(left, top), Offset(left + cornerLength, top), paint);
 
     // Top right
-    canvas.drawLine(Offset(left + frameSize - cornerLength, top), Offset(left + frameSize, top), paint);
-    canvas.drawLine(Offset(left + frameSize, top), Offset(left + frameSize, top + cornerLength), paint);
+    canvas.drawLine(Offset(left + frameSize - cornerLength, top),
+        Offset(left + frameSize, top), paint);
+    canvas.drawLine(Offset(left + frameSize, top),
+        Offset(left + frameSize, top + cornerLength), paint);
 
     // Bottom left
-    canvas.drawLine(Offset(left, top + frameSize - cornerLength), Offset(left, top + frameSize), paint);
-    canvas.drawLine(Offset(left, top + frameSize), Offset(left + cornerLength, top + frameSize), paint);
+    canvas.drawLine(Offset(left, top + frameSize - cornerLength),
+        Offset(left, top + frameSize), paint);
+    canvas.drawLine(Offset(left, top + frameSize),
+        Offset(left + cornerLength, top + frameSize), paint);
 
     // Bottom right
-    canvas.drawLine(Offset(left + frameSize - cornerLength, top + frameSize), Offset(left + frameSize, top + frameSize), paint);
-    canvas.drawLine(Offset(left + frameSize, top + frameSize), Offset(left + frameSize, top + frameSize - cornerLength), paint);
+    canvas.drawLine(Offset(left + frameSize - cornerLength, top + frameSize),
+        Offset(left + frameSize, top + frameSize), paint);
+    canvas.drawLine(Offset(left + frameSize, top + frameSize),
+        Offset(left + frameSize, top + frameSize - cornerLength), paint);
   }
 
   @override

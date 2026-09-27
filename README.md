@@ -9,7 +9,9 @@ Source** to **GitHub Actions**. The site will be available at
 `https://OWNER.github.io/REPOSITORY/`.
 
 The web build works over HTTPS, so a phone browser can grant camera access.
-Allow camera permission when prompted.
+The scanner uses the rear-facing camera only, and its web preview leaves Flutter
+controls touchable. When configured, it reads a frame automatically every five
+seconds and displays extracted label text.
 
 ## Image Analysis
 
@@ -17,5 +19,6 @@ GitHub Pages only hosts static files. The image-analysis API must be hosted
 separately at an authenticated, rate-limited HTTPS endpoint. Set the repository
 Actions variable `GEMINI_PROXY_URL` to that endpoint to include it in the next
 web build. Never put the Gemini API key in the Flutter app or a GitHub Actions
-variable. The development proxy in `server/` is unauthenticated and must not be
-exposed publicly.
+variable. Without `GEMINI_PROXY_URL`, the camera preview still works but price
+reading is unavailable. The development proxy in `server/` is unauthenticated
+and must not be exposed publicly.

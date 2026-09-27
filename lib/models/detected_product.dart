@@ -1,4 +1,5 @@
 import 'dart:ui';
+import '../utils/currency.dart';
 
 class DetectedProduct {
   final String productName;
@@ -76,7 +77,7 @@ class DetectedProduct {
 
   @override
   String toString() {
-    return 'DetectedProduct(name: $productName, price: R$price, quantity: $quantity, confidence: ${(confidence * 100).toStringAsFixed(1)}%)';
+    return 'DetectedProduct(name: $productName, price: ${formatZar(price)}, quantity: $quantity, confidence: ${(confidence * 100).toStringAsFixed(1)}%)';
   }
 
   @override

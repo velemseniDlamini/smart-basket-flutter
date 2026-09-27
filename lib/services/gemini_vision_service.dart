@@ -28,8 +28,16 @@ class GeminiScanResult {
 class GeminiVisionService {
   static const _endpoint = String.fromEnvironment(
     'GEMINI_PROXY_URL',
-    defaultValue: 'http://127.0.0.1:8000/analyze',
+    defaultValue: '',
   );
+
+  static bool get isConfigured {
+    final uri = Uri.tryParse(_endpoint);
+    return uri != null &&
+        (uri.scheme == 'https' ||
+            (uri.scheme == 'http' &&
+                (uri.host == 'localhost' || uri.host == '127.0.0.1')));
+  }
 
   final http.Client _client = http.Client();
 
@@ -37,6 +45,12 @@ class GeminiVisionService {
     Uint8List imageBytes, {
     String mimeType = 'image/jpeg',
   }) async {
+    if (!isConfigured) {
+      throw const GeminiVisionException(
+        'Price reading needs a secure analysis service. Configure GEMINI_PROXY_URL and redeploy the app.',
+      );
+    }
+
     final response = await _client
         .post(
           Uri.parse(_endpoint),
@@ -51,13 +65,15 @@ class GeminiVisionService {
     final Map<String, dynamic> body = jsonDecode(response.body);
     if (response.statusCode != 200) {
       throw GeminiVisionException(
-        body['error'] as String? ?? 'Image analysis failed (${response.statusCode})',
+        body['error'] as String? ??
+            'Image analysis failed (${response.statusCode})',
       );
     }
 
     final rawProducts = body['products'];
     if (rawProducts is! List) {
-      throw const GeminiVisionException('The image analysis response was invalid.');
+      throw const GeminiVisionException(
+          'The image analysis response was invalid.');
     }
 
     final products = <GeminiProductResult>[];

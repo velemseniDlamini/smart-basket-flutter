@@ -5,6 +5,7 @@ import '../services/app_state.dart';
 import '../widgets/camera_scanner.dart';
 import '../widgets/web_camera_scanner.dart';
 import '../models/detected_product.dart';
+import '../utils/currency.dart';
 
 class ShoppingScreen extends StatefulWidget {
   const ShoppingScreen({Key? key}) : super(key: key);
@@ -43,7 +44,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
             ],
           ),
           body: _showScanner
-              ? (kIsWeb 
+              ? (kIsWeb
                   ? WebCameraScanner(
                       onProductDetected: (product) {
                         appState.addProductToBasket(product);
@@ -176,8 +177,8 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                   Expanded(
                     child: _buildStatCard(
                       'Total',
-                      'R${appState.basketTotal.toStringAsFixed(2)}',
-                      Icons.attach_money,
+                      formatZar(appState.basketTotal),
+                      Icons.payments_outlined,
                       Colors.green,
                     ),
                   ),
@@ -197,7 +198,8 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -360,7 +362,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
             ),
           ),
           Text(
-            'R${product.lineTotal.toStringAsFixed(2)}',
+            formatZar(product.lineTotal),
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
@@ -440,7 +442,8 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                           itemCount: appState.shoppingBasket.length,
                           itemBuilder: (context, index) {
                             final product = appState.shoppingBasket[index];
-                            return _buildFullBasketItem(context, appState, product, index);
+                            return _buildFullBasketItem(
+                                context, appState, product, index);
                           },
                         ),
                 ),
@@ -461,7 +464,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                               ),
                             ),
                             Text(
-                              'R${appState.basketTotal.toStringAsFixed(2)}',
+                              formatZar(appState.basketTotal),
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -493,7 +496,8 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
     );
   }
 
-  Widget _buildFullBasketItem(BuildContext context, AppState appState, DetectedProduct product, int index) {
+  Widget _buildFullBasketItem(BuildContext context, AppState appState,
+      DetectedProduct product, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -516,7 +520,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'R${product.price.toStringAsFixed(2)} each',
+                  '${formatZar(product.price)} each',
                   style: const TextStyle(
                     fontSize: 14,
                     color: Color(0xFF718096),
@@ -550,7 +554,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                'R${product.lineTotal.toStringAsFixed(2)}',
+                formatZar(product.lineTotal),
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -563,7 +567,8 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
     );
   }
 
-  void _showProductAddedSnackBar(BuildContext context, DetectedProduct product) {
+  void _showProductAddedSnackBar(
+      BuildContext context, DetectedProduct product) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Added ${product.productName} to basket'),
@@ -586,7 +591,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Generate Receipt'),
         content: Text(
-          'Generate a receipt for ${appState.basketItemCount} items totaling R${appState.basketTotal.toStringAsFixed(2)}?',
+          'Generate a receipt for ${appState.basketItemCount} items totaling ${formatZar(appState.basketTotal)}?',
         ),
         actions: [
           TextButton(

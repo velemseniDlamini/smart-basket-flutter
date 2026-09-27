@@ -34,7 +34,7 @@ class CameraService {
       // Initialize camera controller with back camera
       final backCamera = _cameras!.firstWhere(
         (camera) => camera.lensDirection == CameraLensDirection.back,
-        orElse: () => _cameras!.first,
+        orElse: () => throw StateError('No rear-facing camera is available.'),
       );
 
       _controller = CameraController(
@@ -86,7 +86,9 @@ class CameraService {
       final image = await controller.takePicture();
       return await image.readAsBytes();
     } finally {
-      if (resumeStream && _isInitialized && !controller.value.isStreamingImages) {
+      if (resumeStream &&
+          _isInitialized &&
+          !controller.value.isStreamingImages) {
         await controller.startImageStream(_onImageStream);
       }
     }
@@ -94,7 +96,7 @@ class CameraService {
 
   /// Handle image stream (to be overridden by callback)
   Function(CameraImage)? _imageStreamCallback;
-  
+
   void setImageStreamCallback(Function(CameraImage) callback) {
     _imageStreamCallback = callback;
   }

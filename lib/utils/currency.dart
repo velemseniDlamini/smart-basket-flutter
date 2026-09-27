@@ -1,0 +1,1 @@
+String formatZar(double amount) => 'R${amount.toStringAsFixed(2)}';

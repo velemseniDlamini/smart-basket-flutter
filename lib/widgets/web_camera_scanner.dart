@@ -35,6 +35,7 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
   String _viewId = 'camera-view-${DateTime.now().millisecondsSinceEpoch}';
   List<GeminiProductResult> _lastImageProducts = [];
   String _recognizedText = '';
+  String _receiptText = '';
 
   @override
   void initState() {
@@ -138,6 +139,7 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
         setState(() {
           _lastImageProducts = result.products;
           _recognizedText = result.recognizedText;
+          _receiptText = result.receiptText;
           _analysisError = null;
         });
       }
@@ -386,11 +388,12 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
                       textAlign: TextAlign.center,
                     ),
                   ],
-                  if (_recognizedText.isNotEmpty) ...[
+                  if (_receiptText.isNotEmpty ||
+                      _recognizedText.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
-                      _recognizedText,
-                      maxLines: 2,
+                      _receiptText.isNotEmpty ? _receiptText : _recognizedText,
+                      maxLines: 5,
                       overflow: TextOverflow.ellipsis,
                       style:
                           const TextStyle(color: Colors.white60, fontSize: 12),

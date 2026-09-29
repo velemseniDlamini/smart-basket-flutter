@@ -18,10 +18,12 @@ class GeminiProductResult {
 class GeminiScanResult {
   final List<GeminiProductResult> products;
   final String recognizedText;
+  final String receiptText;
 
   const GeminiScanResult({
     required this.products,
     required this.recognizedText,
+    required this.receiptText,
   });
 }
 
@@ -97,6 +99,9 @@ class GeminiVisionService {
     return GeminiScanResult(
       products: products,
       recognizedText: body['recognized_text'] as String? ?? '',
+      receiptText: body['receipt_text'] as String? ??
+          body['recognized_text'] as String? ??
+          '',
     );
   }
 

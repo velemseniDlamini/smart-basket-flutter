@@ -34,15 +34,22 @@ def parse_image_request(payload):
 
 def analyze_image(image_bytes, mime_type, api_key):
     prompt = (
-        "Inspect this shopping image for retail product packaging and its shelf price tag. "
+        "Read the visible retail price label or receipt in this image as OCR. "
         "Return only JSON with this shape: "
         '{"products":[{"name":"string","price":number|null,'
-        '"confidence":number}],"recognized_text":"string"}. '
-        "List distinct visible retail products. Set price only when a price is "
-        "clearly printed on a visible price label; otherwise use null. Read the "
-        "printed amount exactly, including South African rand values, and associate "
-        "it only with the product the label identifies. Do not infer or guess prices. "
-        "Include all legible text from the product and price label in recognized_text."
+        '"confidence":number}],"recognized_text":"string",'
+        '"receipt_text":"string"}. '
+        "List each distinct product whose name and price can be read. Use a numeric "
+        "price in South African rand, without a currency symbol. Set price to null "
+        "when it is not clearly printed, and never infer or guess a value. Keep "
+        "recognized_text as a faithful transcription of all legible text, preserving "
+        "the original wording. Format receipt_text as a compact receipt using these "
+        "lines where visible: STORE, DATE, ITEM | QTY | UNIT PRICE | LINE TOTAL, "
+        "then SUBTOTAL, DISCOUNT, TAX, and TOTAL. Omit fields that are not visible; "
+        "do not invent quantities, totals, store names, or receipt details. For a "
+        "single shelf label, format its receipt_text as one item row with the exact "
+        "visible product name and price. Use R for displayed South African rand "
+        "amounts in receipt_text."
     )
     body = json.dumps(
         {
@@ -82,6 +89,10 @@ def analyze_image(image_bytes, mime_type, api_key):
     result = json.loads(parts[0]["text"])
     if not isinstance(result.get("products"), list):
         raise RuntimeError("Gemini returned an invalid product list")
+    if not isinstance(result.get("recognized_text"), str):
+        result["recognized_text"] = ""
+    if not isinstance(result.get("receipt_text"), str):
+        result["receipt_text"] = result["recognized_text"]
     return result
 
 

@@ -47,6 +47,7 @@ class AnalyzeImageTests(unittest.TestCase):
                                             {"name": "Milk", "price": 18.5, "confidence": 0.9}
                                         ],
                                         "recognized_text": "Milk R18.50",
+                                        "receipt_text": "ITEM | QTY | UNIT PRICE | LINE TOTAL\nMilk | 1 | R18.50 | R18.50",
                                     }
                                 )
                             }
@@ -67,6 +68,38 @@ class AnalyzeImageTests(unittest.TestCase):
             base64.b64encode(b"jpeg-data").decode("ascii"),
         )
         self.assertEqual(result["products"][0]["name"], "Milk")
+        self.assertIn("ITEM | QTY", result["receipt_text"])
+        self.assertIn("R18.50", result["receipt_text"])
+        prompt = request_payload["contents"][0]["parts"][0]["text"]
+        self.assertIn("recognized_text", prompt)
+        self.assertIn("receipt_text", prompt)
+        self.assertIn("never infer or guess", prompt)
+
+    @patch("main.urlopen")
+    def test_falls_back_to_recognized_text_for_old_model_response(self, urlopen):
+        gemini_payload = {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {
+                                "text": json.dumps(
+                                    {
+                                        "products": [],
+                                        "recognized_text": "Bread R12.99",
+                                    }
+                                )
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+        urlopen.return_value = io.BytesIO(json.dumps(gemini_payload).encode("utf-8"))
+
+        result = analyze_image(b"jpeg-data", "image/jpeg", "test-key")
+
+        self.assertEqual(result["receipt_text"], "Bread R12.99")
 
 
 if __name__ == "__main__":

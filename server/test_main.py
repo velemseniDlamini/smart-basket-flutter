@@ -4,7 +4,7 @@ import json
 import unittest
 from unittest.mock import patch
 
-from main import analyze_image, parse_image_request
+from main import RequestRateLimiter, analyze_image, origin_is_allowed, parse_image_request
 
 
 class ParseImageRequestTests(unittest.TestCase):
@@ -30,6 +30,24 @@ class ParseImageRequestTests(unittest.TestCase):
     def test_rejects_empty_image(self):
         with self.assertRaisesRegex(ValueError, "between 1 byte"):
             parse_image_request({"image_base64": "", "mime_type": "image/jpeg"})
+
+
+class ProxyProtectionTests(unittest.TestCase):
+    @patch.dict("os.environ", {"ALLOWED_ORIGINS": "https://shop.example"})
+    def test_allows_configured_origin_and_non_browser_request(self):
+        self.assertTrue(origin_is_allowed("https://shop.example"))
+        self.assertTrue(origin_is_allowed(""))
+
+    @patch.dict("os.environ", {"ALLOWED_ORIGINS": "https://shop.example"})
+    def test_rejects_other_browser_origins(self):
+        self.assertFalse(origin_is_allowed("https://attacker.example"))
+
+    def test_rate_limiter_rejects_requests_over_limit(self):
+        limiter = RequestRateLimiter(limit=2, window=60)
+        self.assertTrue(limiter.allow("client"))
+        self.assertTrue(limiter.allow("client"))
+        self.assertFalse(limiter.allow("client"))
+        self.assertTrue(limiter.allow("other-client"))
 
 
 class AnalyzeImageTests(unittest.TestCase):

@@ -1,17 +1,60 @@
 import base64
 import binascii
+from collections import deque
 import json
 import os
+import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
+RATE_LIMIT_WINDOW_SECONDS = 60
+RATE_LIMIT_REQUESTS = 10
+DEFAULT_ALLOWED_ORIGINS = "https://velemsenidlamini.github.io"
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
     "gemini-flash-latest:generateContent"
 )
+
+
+class RequestRateLimiter:
+    def __init__(self, limit=RATE_LIMIT_REQUESTS, window=RATE_LIMIT_WINDOW_SECONDS):
+        self.limit = limit
+        self.window = window
+        self.requests = {}
+        self.lock = threading.Lock()
+
+    def allow(self, client_id):
+        now = time.monotonic()
+        with self.lock:
+            recent = self.requests.setdefault(client_id, deque())
+            while recent and now - recent[0] >= self.window:
+                recent.popleft()
+            if len(recent) >= self.limit:
+                return False
+            recent.append(now)
+            if len(self.requests) > 4096:
+                self.requests = {
+                    key: values
+                    for key, values in self.requests.items()
+                    if values and now - values[-1] < self.window
+                }
+            return True
+
+
+rate_limiter = RequestRateLimiter()
+
+
+def allowed_origins():
+    configured = os.environ.get("ALLOWED_ORIGINS", DEFAULT_ALLOWED_ORIGINS)
+    return {origin.strip() for origin in configured.split(",") if origin.strip()}
+
+
+def origin_is_allowed(origin):
+    return not origin or origin in allowed_origins()
 
 
 def parse_image_request(payload):
@@ -102,18 +145,42 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(response)))
-        self.send_header("Access-Control-Allow-Origin", "*")
+        origin = self.headers.get("Origin", "")
+        if origin and origin_is_allowed(origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
         self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
         self.wfile.write(response)
 
+    def do_GET(self):
+        if self.path == "/health":
+            self._send_json(200, {"status": "ok"})
+            return
+        self._send_json(404, {"error": "not found"})
+
     def do_OPTIONS(self):
+        origin = self.headers.get("Origin", "")
+        if origin and not origin_is_allowed(origin):
+            self._send_json(403, {"error": "origin not allowed"})
+            return
         self._send_json(204, {})
 
     def do_POST(self):
         if self.path != "/analyze":
             self._send_json(404, {"error": "not found"})
+            return
+
+        origin = self.headers.get("Origin", "")
+        if origin and not origin_is_allowed(origin):
+            self._send_json(403, {"error": "origin not allowed"})
+            return
+
+        forwarded_for = self.headers.get("X-Forwarded-For", "")
+        client_id = forwarded_for.split(",", 1)[0].strip() or self.client_address[0]
+        if not rate_limiter.allow(client_id):
+            self._send_json(429, {"error": "too many image analyses; try again shortly"})
             return
 
         try:
@@ -144,8 +211,8 @@ class GeminiProxyHandler(BaseHTTPRequestHandler):
 
 
 def main():
-    port = int(os.environ.get("PORT", "8000"))
-    host = os.environ.get("HOST", "127.0.0.1")
+    port = int(os.environ.get("PORT", "10000"))
+    host = os.environ.get("HOST", "0.0.0.0")
     server = ThreadingHTTPServer((host, port), GeminiProxyHandler)
     print("Gemini image proxy listening on http://{}:{}/analyze".format(host, port))
     server.serve_forever()

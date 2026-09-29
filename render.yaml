@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: smart-basket-gemini-proxy
+    runtime: docker
+    plan: free
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: ./server
+    healthCheckPath: /health
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://velemsenidlamini.github.io

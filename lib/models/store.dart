@@ -14,24 +14,6 @@ class Store {
   // Predefined South African stores
   static const List<Store> availableStores = [
     Store(
-      id: 'checkers',
-      name: 'Checkers',
-      icon: '🛒',
-      description: 'Better and Better',
-    ),
-    Store(
-      id: 'picknpay',
-      name: 'Pick n Pay',
-      icon: '🛍️',
-      description: 'Doing good is good business',
-    ),
-    Store(
-      id: 'woolworths',
-      name: 'Woolworths',
-      icon: '🛒',
-      description: 'Good business journey',
-    ),
-    Store(
       id: 'shoprite',
       name: 'Shoprite',
       icon: '🛒',
@@ -42,12 +24,6 @@ class Store {
       name: 'SPAR',
       icon: '🛍️',
       description: 'We live here too',
-    ),
-    Store(
-      id: 'makro',
-      name: 'Makro',
-      icon: '🏪',
-      description: 'More for less',
     ),
   ];
 

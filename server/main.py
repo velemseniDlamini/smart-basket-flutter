@@ -77,7 +77,19 @@ def parse_image_request(payload):
 
 def analyze_image(image_bytes, mime_type, api_key):
     prompt = (
-        "Read the visible retail price label or receipt in this image as OCR. "
+        "This image is part of a Shoprite shelf-label recognition task. Read the "
+        "individual shelf price ticket closest to each visible product, rather "
+        "than using text printed on the product packaging or large aisle/promo "
+        "signs elsewhere in the scene. Shoprite tickets may show a product "
+        "description, a large current price, a smaller previous or promotional "
+        "price, a loyalty-card price, a unit price (for example per kg or litre), "
+        "and offer wording or dates. Identify which amount is explicitly the "
+        "current payable shelf price; use that as price. Do not mistake a savings "
+        "amount, multi-buy total, unit price, or unrelated promotional sign for "
+        "the product price. If the ticket is obscured, too small, or ambiguous, "
+        "return no product rather than guessing. SPAR labels may also be read "
+        "when visibly identifiable; never assume a retailer from colors alone. "
+        "Transcribe the ticket as OCR. "
         "Return only JSON with this shape: "
         '{"products":[{"name":"string","price":number|null,'
         '"confidence":number}],"recognized_text":"string",'
@@ -85,8 +97,11 @@ def analyze_image(image_bytes, mime_type, api_key):
         "List each distinct product whose name and price can be read. Use a numeric "
         "price in South African rand, without a currency symbol. Set price to null "
         "when it is not clearly printed, and never infer or guess a value. Keep "
-        "recognized_text as a faithful transcription of all legible text, preserving "
-        "the original wording. Format receipt_text as a compact receipt using these "
+        "recognized_text as a faithful transcription of all legible text on the "
+        "target ticket, preserving wording, line breaks, currency markers, decimals, "
+        "unit-price text, loyalty/promotion wording, and dates. Keep unrelated "
+        "background text out when it is not part of the ticket. Format receipt_text "
+        "as a compact receipt using these "
         "lines where visible: STORE, DATE, ITEM | QTY | UNIT PRICE | LINE TOTAL, "
         "then SUBTOTAL, DISCOUNT, TAX, and TOTAL. Omit fields that are not visible; "
         "do not invent quantities, totals, store names, or receipt details. For a "

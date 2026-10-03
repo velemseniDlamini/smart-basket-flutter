@@ -26,7 +26,7 @@ class SmartBasketDemo extends StatelessWidget {
 }
 
 class DemoHomeScreen extends StatefulWidget {
-  const DemoHomeScreen({Key? key}) : super(key: key);
+  const DemoHomeScreen({super.key});
 
   @override
   State<DemoHomeScreen> createState() => _DemoHomeScreenState();
@@ -34,8 +34,8 @@ class DemoHomeScreen extends StatefulWidget {
 
 class _DemoHomeScreenState extends State<DemoHomeScreen> {
   int _currentIndex = 0;
-  final List<String> _stores = ['Checkers', 'Pick n Pay', 'Woolworths', 'Shoprite', 'SPAR', 'Makro'];
-  final List<String> _storeIcons = ['🛒', '🛍️', '🛒', '🛒', '🛍️', '🏪'];
+  final List<String> _stores = ['Shoprite', 'SPAR'];
+  final List<String> _storeIcons = ['🛒', '🛍️'];
   final List<Map<String, dynamic>> _basketItems = [];
 
   void _addDemoItem() {
@@ -46,7 +46,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
       {'name': 'Bananas 1kg', 'price': 22.00},
       {'name': 'Chicken Breast', 'price': 89.99},
     ];
-    
+
     if (_basketItems.length < demoItems.length) {
       setState(() {
         _basketItems.add(demoItems[_basketItems.length]);
@@ -79,7 +79,8 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Login'),
           BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Stores'),
           BottomNavigationBarItem(icon: Icon(Icons.camera_alt), label: 'Scan'),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Basket'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_cart), label: 'Basket'),
         ],
       ),
     );
@@ -108,7 +109,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 10,
                       offset: const Offset(0, 5),
                     ),
@@ -142,7 +143,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 10,
                       offset: const Offset(0, 5),
                     ),
@@ -244,7 +245,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 10,
                               offset: const Offset(0, 2),
                             ),
@@ -257,7 +258,8 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                               width: 60,
                               height: 60,
                               decoration: BoxDecoration(
-                                color: const Color(0xFF667eea).withOpacity(0.1),
+                                color: const Color(0xFF667eea)
+                                    .withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(30),
                               ),
                               child: Center(
@@ -324,7 +326,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
               ),
             ),
           ),
-          
+
           // Scanning frame
           Center(
             child: Container(
@@ -350,16 +352,28 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                         height: 30,
                         decoration: BoxDecoration(
                           border: Border(
-                            top: isTop ? const BorderSide(color: Colors.green, width: 4) : BorderSide.none,
-                            bottom: !isTop ? const BorderSide(color: Colors.green, width: 4) : BorderSide.none,
-                            left: isLeft ? const BorderSide(color: Colors.green, width: 4) : BorderSide.none,
-                            right: !isLeft ? const BorderSide(color: Colors.green, width: 4) : BorderSide.none,
+                            top: isTop
+                                ? const BorderSide(
+                                    color: Colors.green, width: 4)
+                                : BorderSide.none,
+                            bottom: !isTop
+                                ? const BorderSide(
+                                    color: Colors.green, width: 4)
+                                : BorderSide.none,
+                            left: isLeft
+                                ? const BorderSide(
+                                    color: Colors.green, width: 4)
+                                : BorderSide.none,
+                            right: !isLeft
+                                ? const BorderSide(
+                                    color: Colors.green, width: 4)
+                                : BorderSide.none,
                           ),
                         ),
                       ),
                     );
                   }),
-                  
+
                   // Simulated detected text
                   Positioned(
                     top: 80,
@@ -367,7 +381,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.2),
+                        color: Colors.green.withValues(alpha: 0.2),
                         border: Border.all(color: Colors.green, width: 2),
                         borderRadius: BorderRadius.circular(4),
                       ),
@@ -381,7 +395,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
               ),
             ),
           ),
-          
+
           // Top controls
           Positioned(
             top: MediaQuery.of(context).padding.top + 16,
@@ -401,7 +415,8 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.green,
                     borderRadius: BorderRadius.circular(16),
@@ -411,14 +426,15 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                     children: [
                       Icon(Icons.search, color: Colors.white, size: 16),
                       SizedBox(width: 4),
-                      Text('Scanning...', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      Text('Scanning...',
+                          style: TextStyle(color: Colors.white, fontSize: 12)),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          
+
           // Bottom info
           Positioned(
             bottom: MediaQuery.of(context).padding.bottom + 16,
@@ -435,7 +451,10 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                 children: [
                   Text(
                     'Products Detected: ${_basketItems.length}',
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
                   ElevatedButton(
@@ -479,7 +498,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Stats
               Row(
                 children: [
@@ -491,7 +510,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 5,
                             offset: const Offset(0, 2),
                           ),
@@ -499,7 +518,8 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                       ),
                       child: Column(
                         children: [
-                          const Icon(Icons.shopping_basket, color: Colors.blue, size: 24),
+                          const Icon(Icons.shopping_basket,
+                              color: Colors.blue, size: 24),
                           const SizedBox(height: 8),
                           Text(
                             '${_basketItems.length}',
@@ -509,7 +529,9 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                               color: Color(0xFF2d3748),
                             ),
                           ),
-                          const Text('Items', style: TextStyle(fontSize: 12, color: Color(0xFF718096))),
+                          const Text('Items',
+                              style: TextStyle(
+                                  fontSize: 12, color: Color(0xFF718096))),
                         ],
                       ),
                     ),
@@ -523,7 +545,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 5,
                             offset: const Offset(0, 2),
                           ),
@@ -531,7 +553,8 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                       ),
                       child: Column(
                         children: [
-                          const Icon(Icons.attach_money, color: Colors.green, size: 24),
+                          const Icon(Icons.attach_money,
+                              color: Colors.green, size: 24),
                           const SizedBox(height: 8),
                           Text(
                             'R${_total.toStringAsFixed(2)}',
@@ -541,7 +564,9 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                               color: Color(0xFF2d3748),
                             ),
                           ),
-                          const Text('Total', style: TextStyle(fontSize: 12, color: Color(0xFF718096))),
+                          const Text('Total',
+                              style: TextStyle(
+                                  fontSize: 12, color: Color(0xFF718096))),
                         ],
                       ),
                     ),
@@ -549,7 +574,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                 ],
               ),
               const SizedBox(height: 24),
-              
+
               // Items list
               Expanded(
                 child: _basketItems.isEmpty
@@ -557,15 +582,18 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.shopping_cart_outlined, size: 80, color: Colors.grey),
+                            Icon(Icons.shopping_cart_outlined,
+                                size: 80, color: Colors.grey),
                             SizedBox(height: 16),
                             Text(
                               'Your basket is empty',
-                              style: TextStyle(fontSize: 18, color: Color(0xFF718096)),
+                              style: TextStyle(
+                                  fontSize: 18, color: Color(0xFF718096)),
                             ),
                             Text(
                               'Go to Scanner to add products',
-                              style: TextStyle(fontSize: 14, color: Color(0xFF718096)),
+                              style: TextStyle(
+                                  fontSize: 14, color: Color(0xFF718096)),
                             ),
                           ],
                         ),
@@ -582,7 +610,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black.withValues(alpha: 0.05),
                                   blurRadius: 5,
                                   offset: const Offset(0, 1),
                                 ),
@@ -592,7 +620,8 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         item['name'],
@@ -617,7 +646,8 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                                       _basketItems.removeAt(index);
                                     });
                                   },
-                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                  icon: const Icon(Icons.delete_outline,
+                                      color: Colors.red),
                                 ),
                               ],
                             ),
@@ -625,7 +655,7 @@ class _DemoHomeScreenState extends State<DemoHomeScreen> {
                         },
                       ),
               ),
-              
+
               // Checkout button
               if (_basketItems.isNotEmpty)
                 SizedBox(

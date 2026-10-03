@@ -92,6 +92,9 @@ class AnalyzeImageTests(unittest.TestCase):
         self.assertIn("recognized_text", prompt)
         self.assertIn("receipt_text", prompt)
         self.assertIn("never infer or guess", prompt)
+        self.assertIn("Shoprite shelf-label recognition", prompt)
+        self.assertIn("unrelated promotional sign", prompt)
+        self.assertIn("SPAR labels", prompt)
 
     @patch("main.urlopen")
     def test_falls_back_to_recognized_text_for_old_model_response(self, urlopen):

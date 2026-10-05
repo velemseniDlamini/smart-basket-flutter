@@ -13,10 +13,10 @@ class CameraScanner extends StatefulWidget {
   final VoidCallback? onClose;
 
   const CameraScanner({
-    Key? key,
+    super.key,
     required this.onProductDetected,
     this.onClose,
-  }) : super(key: key);
+  });
 
   @override
   State<CameraScanner> createState() => _CameraScannerState();
@@ -31,7 +31,7 @@ class _CameraScannerState extends State<CameraScanner> {
   bool _isInitialized = false;
   bool _isScanning = false;
   bool _isAnalyzingImage = false;
-  List<DetectedProduct> _detectedProducts = [];
+  final List<DetectedProduct> _detectedProducts = [];
   RecognizedText? _recognizedText;
   List<GeminiProductResult> _lastImageProducts = [];
   Timer? _scanTimer;
@@ -345,12 +345,12 @@ class TextDetectionPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint paint = Paint()
-      ..color = Colors.green.withOpacity(0.3)
+      ..color = Colors.green.withValues(alpha: 0.3)
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
 
     final Paint fillPaint = Paint()
-      ..color = Colors.green.withOpacity(0.1)
+      ..color = Colors.green.withValues(alpha: 0.1)
       ..style = PaintingStyle.fill;
 
     for (final TextBlock block in recognizedText.blocks) {
@@ -420,7 +420,7 @@ class ScanningFramePainter extends CustomPainter {
     final double frameSize = size.width * 0.8;
     final double left = (size.width - frameSize) / 2;
     final double top = (size.height - frameSize) / 2;
-    final double cornerLength = 30;
+    const double cornerLength = 30;
 
     // Draw corner brackets
     // Top left

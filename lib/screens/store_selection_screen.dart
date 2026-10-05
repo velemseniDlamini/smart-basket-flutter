@@ -4,7 +4,7 @@ import '../services/app_state.dart';
 import '../models/store.dart';
 
 class StoreSelectionScreen extends StatelessWidget {
-  const StoreSelectionScreen({Key? key}) : super(key: key);
+  const StoreSelectionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +143,7 @@ class _StoreCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -157,7 +157,7 @@ class _StoreCard extends StatelessWidget {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: const Color(0xFF667eea).withOpacity(0.1),
+                color: const Color(0xFF667eea).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(30),
               ),
               child: Center(

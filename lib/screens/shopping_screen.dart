@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../services/app_state.dart';
 import '../widgets/camera_scanner.dart';
 import '../widgets/web_camera_scanner.dart';
@@ -8,7 +11,7 @@ import '../models/detected_product.dart';
 import '../utils/currency.dart';
 
 class ShoppingScreen extends StatefulWidget {
-  const ShoppingScreen({Key? key}) : super(key: key);
+  const ShoppingScreen({super.key});
 
   @override
   State<ShoppingScreen> createState() => _ShoppingScreenState();
@@ -111,7 +114,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 2),
                     ),
@@ -123,7 +126,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                       width: 60,
                       height: 60,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF667eea).withOpacity(0.1),
+                        color: const Color(0xFF667eea).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(30),
                       ),
                       child: Center(
@@ -207,7 +210,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -331,7 +334,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 5,
             offset: const Offset(0, 1),
           ),
@@ -588,41 +591,185 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
   void _showCheckoutDialog(BuildContext context, AppState appState) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Generate Receipt'),
-        content: Text(
-          'Generate a receipt for ${appState.basketItemCount} items totaling ${formatZar(appState.basketTotal)}?',
+      builder: (dialogContext) {
+        var isSaving = false;
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) => AlertDialog(
+            title: const Text('Generate Receipt'),
+            content: Text(
+              'Save a receipt for ${appState.basketItemCount} items totaling ${formatZar(appState.basketTotal)}?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        setDialogState(() => isSaving = true);
+                        try {
+                          final receipt = await appState.completeCheckout();
+                          if (!dialogContext.mounted || !mounted) return;
+                          Navigator.pop(dialogContext);
+                          _showReceiptDialog(context, receipt);
+                        } catch (error) {
+                          if (!dialogContext.mounted) return;
+                          setDialogState(() => isSaving = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Could not save receipt: $error'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      },
+                child: isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Save Receipt'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showReceiptDialog(BuildContext context, Map<String, dynamic> receipt) {
+    final items = (receipt['items'] as List).cast<Map<String, dynamic>>();
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Receipt saved'),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${receipt['store_name']}  |  ${receipt['created_at']}'),
+                const Divider(height: 24),
+                for (final item in items)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${item['name']}  x${item['quantity']}',
+                          ),
+                        ),
+                        Text(formatZar((item['line_total'] as num).toDouble())),
+                      ],
+                    ),
+                  ),
+                const Divider(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'TOTAL',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      formatZar((receipt['total'] as num).toDouble()),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              try {
-                appState.completeCheckout();
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Receipt generated successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } catch (e) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error: $e'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            child: const Text('Generate'),
+          ElevatedButton.icon(
+            onPressed: () => _printReceipt(context, receipt),
+            icon: const Icon(Icons.print),
+            label: const Text('Print / Save PDF'),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _printReceipt(
+    BuildContext context,
+    Map<String, dynamic> receipt,
+  ) async {
+    try {
+      final document = pw.Document();
+      final items = (receipt['items'] as List).cast<Map<String, dynamic>>();
+      document.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.roll80,
+          margin: const pw.EdgeInsets.all(16),
+          build: (context) => [
+            pw.Center(
+              child: pw.Text(
+                'SMART BASKET',
+                style: const pw.TextStyle(
+                  fontSize: 16,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 8),
+            pw.Text('${receipt['store_name']}'),
+            pw.Text('Receipt: ${receipt['id']}'),
+            pw.Text('Date: ${receipt['created_at']}'),
+            pw.Divider(),
+            for (final item in items) ...[
+              pw.Text('${item['name']} x${item['quantity']}'),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    '${formatZar((item['unit_price'] as num).toDouble())} each',
+                  ),
+                  pw.Text(
+                    formatZar((item['line_total'] as num).toDouble()),
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 6),
+            ],
+            pw.Divider(),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  'TOTAL',
+                  style: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                ),
+                pw.Text(
+                  formatZar((receipt['total'] as num).toDouble()),
+                  style: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 14),
+            pw.Center(child: pw.Text('Thank you for shopping')),
+          ],
+        ),
+      );
+
+      await Printing.layoutPdf(onLayout: (_) => document.save());
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not print receipt: $error')),
+      );
+    }
   }
 }

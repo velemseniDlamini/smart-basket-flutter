@@ -33,6 +33,10 @@ dependencies:
   
   # HTTP requests (if needed for future API integration)
   http: ^1.2.1
+  supabase_flutter: ^2.18.0
+  printing: ^5.15.1
+  pdf: ^3.13.1
+  local_auth: ^3.0.2
 
 dev_dependencies:
   flutter_test:

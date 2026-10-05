@@ -13,16 +13,18 @@ class WebCameraScanner extends StatefulWidget {
   final VoidCallback? onClose;
 
   const WebCameraScanner({
-    Key? key,
+    super.key,
     required this.onProductDetected,
     this.onClose,
-  }) : super(key: key);
+  });
 
   @override
   State<WebCameraScanner> createState() => _WebCameraScannerState();
 }
 
 class _WebCameraScannerState extends State<WebCameraScanner> {
+  static const _automaticScanInterval = Duration(seconds: 7);
+
   final WebCameraService _cameraService = WebCameraService();
   final GeminiVisionService _geminiVisionService = GeminiVisionService();
 
@@ -31,8 +33,8 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
   String? _error;
   String? _analysisError;
   Timer? _scanTimer;
-  List<DetectedProduct> _detectedProducts = [];
-  String _viewId = 'camera-view-${DateTime.now().millisecondsSinceEpoch}';
+  final List<DetectedProduct> _detectedProducts = [];
+  final String _viewId = 'camera-view-${DateTime.now().millisecondsSinceEpoch}';
   List<GeminiProductResult> _lastImageProducts = [];
   String _recognizedText = '';
   String _receiptText = '';
@@ -102,7 +104,7 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
     _scanTimer?.cancel();
     unawaited(_scanFrame());
     _scanTimer = Timer.periodic(
-      const Duration(seconds: 5),
+      _automaticScanInterval,
       (_) => unawaited(_scanFrame()),
     );
   }
@@ -162,11 +164,7 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
       }
     } catch (e) {
       if (mounted) {
-        _scanTimer?.cancel();
         setState(() => _analysisError = e.toString());
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Image analysis failed: $e')),
-        );
       }
     } finally {
       if (mounted) {
@@ -200,9 +198,9 @@ class _WebCameraScannerState extends State<WebCameraScanner> {
                 color: Colors.white54,
               ),
               const SizedBox(height: 16),
-              Text(
+              const Text(
                 'Camera Error',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -463,7 +461,7 @@ class ScanningFramePainter extends CustomPainter {
     final double frameSize = size.width * 0.8;
     final double left = (size.width - frameSize) / 2;
     final double top = (size.height - frameSize) / 2;
-    final double cornerLength = 30;
+    const double cornerLength = 30;
 
     // Draw corner brackets
     // Top left

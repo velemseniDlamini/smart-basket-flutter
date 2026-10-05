@@ -1,44 +1,130 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../models/detected_product.dart';
 import '../models/store.dart';
-import '../models/user.dart';
+import '../models/user.dart' as app_user;
 
 class AppState extends ChangeNotifier {
+  AppState() {
+    _applyAuthUser(_supabase.auth.currentUser);
+    _authSubscription = _supabase.auth.onAuthStateChange.listen((state) {
+      _applyAuthUser(state.session?.user);
+    });
+  }
+
+  final supabase.SupabaseClient _supabase = supabase.Supabase.instance.client;
+  late final StreamSubscription<supabase.AuthState> _authSubscription;
+
   // User state
-  User? _currentUser;
+  app_user.User? _currentUser;
   bool _isAuthenticated = false;
 
   // Shopping state
   Store? _selectedStore;
-  List<DetectedProduct> _shoppingBasket = [];
+  final List<DetectedProduct> _shoppingBasket = [];
   bool _isScanning = false;
 
   // Getters
-  User? get currentUser => _currentUser;
+  app_user.User? get currentUser => _currentUser;
   bool get isAuthenticated => _isAuthenticated;
   Store? get selectedStore => _selectedStore;
-  List<DetectedProduct> get shoppingBasket => List.unmodifiable(_shoppingBasket);
+  List<DetectedProduct> get shoppingBasket =>
+      List.unmodifiable(_shoppingBasket);
   bool get isScanning => _isScanning;
-  
+
   double get basketTotal {
     return _shoppingBasket.fold(0.0, (sum, product) => sum + product.lineTotal);
   }
 
   int get basketItemCount => _shoppingBasket.length;
 
-  // Authentication methods
-  void login(User user) {
-    _currentUser = user;
-    _isAuthenticated = true;
+  void _applyAuthUser(supabase.User? authUser) {
+    _currentUser = authUser == null
+        ? null
+        : app_user.User(
+            id: authUser.id,
+            email: authUser.email ?? '',
+            name: authUser.userMetadata?['full_name'] as String? ??
+                authUser.email?.split('@').first ??
+                'Shopper',
+            createdAt: DateTime.tryParse(authUser.createdAt) ?? DateTime.now(),
+          );
+    _isAuthenticated = authUser != null;
+    if (!_isAuthenticated) {
+      _selectedStore = null;
+      _shoppingBasket.clear();
+    }
     notifyListeners();
   }
 
-  void logout() {
-    _currentUser = null;
-    _isAuthenticated = false;
-    _selectedStore = null;
-    _shoppingBasket.clear();
-    notifyListeners();
+  static String normalizePhoneNumber(String phoneNumber) {
+    final trimmed = phoneNumber.trim();
+    if (trimmed.isEmpty) {
+      return trimmed;
+    }
+    final digits = trimmed.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) {
+      return trimmed;
+    }
+    if (trimmed.startsWith('+')) {
+      return '+$digits';
+    }
+    return digits;
+  }
+
+  Future<bool> isBiometricsSupported() async {
+    final auth = LocalAuthentication();
+    final canCheck = await auth.canCheckBiometrics;
+    final isSupported = await auth.isDeviceSupported();
+    return canCheck && isSupported;
+  }
+
+  Future<bool> unlockWithBiometrics() async {
+    final auth = LocalAuthentication();
+    final canCheck = await auth.canCheckBiometrics;
+    final isSupported = await auth.isDeviceSupported();
+
+    if (!canCheck || !isSupported) {
+      return false;
+    }
+
+    return auth.authenticate(
+      localizedReason: 'Unlock Smart Basket with Face ID or fingerprint',
+      biometricOnly: true,
+      persistAcrossBackgrounding: true,
+    );
+  }
+
+  Future<supabase.AuthResponse> signIn(String phoneNumber, String password) {
+    final normalizedPhone = normalizePhoneNumber(phoneNumber);
+    return _supabase.auth.signInWithPassword(
+      phone: normalizedPhone,
+      password: password,
+    );
+  }
+
+  Future<supabase.AuthResponse> signUp({
+    required String name,
+    required String phoneNumber,
+    required String password,
+  }) {
+    final normalizedPhone = normalizePhoneNumber(phoneNumber);
+    return _supabase.auth.signUp(
+      phone: normalizedPhone,
+      password: password,
+      data: {'full_name': name.trim()},
+    );
+  }
+
+  Future<void> logout() => _supabase.auth.signOut();
+
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
   }
 
   // Store selection
@@ -57,7 +143,8 @@ class AppState extends ChangeNotifier {
   void addProductToBasket(DetectedProduct product) {
     // Check if product already exists
     final existingIndex = _shoppingBasket.indexWhere(
-      (item) => item.productName.toLowerCase() == product.productName.toLowerCase(),
+      (item) =>
+          item.productName.toLowerCase() == product.productName.toLowerCase(),
     );
 
     if (existingIndex != -1) {
@@ -69,7 +156,7 @@ class AppState extends ChangeNotifier {
       // Add new product
       _shoppingBasket.add(product);
     }
-    
+
     notifyListeners();
   }
 
@@ -85,7 +172,8 @@ class AppState extends ChangeNotifier {
       if (newQuantity <= 0) {
         removeProductFromBasket(index);
       } else {
-        _shoppingBasket[index] = _shoppingBasket[index].copyWith(quantity: newQuantity);
+        _shoppingBasket[index] =
+            _shoppingBasket[index].copyWith(quantity: newQuantity);
         notifyListeners();
       }
     }
@@ -103,35 +191,39 @@ class AppState extends ChangeNotifier {
   }
 
   // Checkout
-  Map<String, dynamic> generateReceipt() {
+  Future<Map<String, dynamic>> completeCheckout() async {
     if (_selectedStore == null || _shoppingBasket.isEmpty) {
-      throw Exception('Cannot generate receipt: no store selected or basket is empty');
+      throw Exception(
+          'Cannot generate receipt: no store selected or basket is empty');
     }
 
-    return {
-      'storeName': _selectedStore!.name,
-      'items': _shoppingBasket.map((product) => {
-        'name': product.productName,
-        'quantity': product.quantity,
-        'unitPrice': product.price,
-        'lineTotal': product.lineTotal,
-      }).toList(),
-      'total': basketTotal,
-      'timestamp': DateTime.now().toIso8601String(),
-      'userId': _currentUser?.id ?? 'anonymous',
-    };
-  }
+    final user = _supabase.auth.currentUser;
+    if (user == null) {
+      throw StateError('Sign in before generating a receipt.');
+    }
 
-  void completeCheckout() {
-    // Generate receipt data
-    final receipt = generateReceipt();
-    
-    // Clear basket after successful checkout
+    final receiptData = {
+      'user_id': user.id,
+      'store_name': _selectedStore!.name,
+      'items': _shoppingBasket
+          .map((product) => {
+                'name': product.productName,
+                'quantity': product.quantity,
+                'unit_price': product.price,
+                'line_total': product.lineTotal,
+              })
+          .toList(),
+      'total': basketTotal,
+    };
+
+    final savedReceipt = await _supabase
+        .from('shopping_receipts')
+        .insert(receiptData)
+        .select('id, created_at')
+        .single();
+
     _shoppingBasket.clear();
-    
-    // You could save the receipt to local storage here
-    // await ReceiptStorage.saveReceipt(receipt);
-    
     notifyListeners();
+    return {...receiptData, ...savedReceipt};
   }
 }

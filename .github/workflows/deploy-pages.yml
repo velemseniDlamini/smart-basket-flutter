@@ -28,12 +28,14 @@ jobs:
       - name: Build web app
         env:
           GEMINI_PROXY_URL: ${{ vars.GEMINI_PROXY_URL || 'https://smart-basket-gemini-proxy.onrender.com/analyze' }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL || 'https://cabzkhiacviyhdcnzygs.supabase.co' }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_1UXsfNITpx2H3hg9Oq0muA_T5C8LBju' }}
         run: |
-          if [ -n "$GEMINI_PROXY_URL" ]; then
-            flutter build web --release --base-href "/${GITHUB_REPOSITORY#*/}/" --dart-define="GEMINI_PROXY_URL=$GEMINI_PROXY_URL"
-          else
-            flutter build web --release --base-href "/${GITHUB_REPOSITORY#*/}/"
-          fi
+          flutter build web --release \
+            --base-href "/${GITHUB_REPOSITORY#*/}/" \
+            --dart-define="GEMINI_PROXY_URL=$GEMINI_PROXY_URL" \
+            --dart-define="SUPABASE_URL=$SUPABASE_URL" \
+            --dart-define="SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build/web

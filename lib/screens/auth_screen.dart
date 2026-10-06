@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/app_state.dart';
@@ -11,7 +12,7 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
   final _nameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -23,7 +24,9 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   void initState() {
     super.initState();
-    _checkBiometricAvailability();
+    if (!kIsWeb) {
+      _checkBiometricAvailability();
+    }
   }
 
   Future<void> _checkBiometricAvailability() async {
@@ -34,7 +37,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   void dispose() {
-    _phoneController.dispose();
+    _emailController.dispose();
     _nameController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -93,7 +96,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (_isCreatingAccount) {
         final response = await appState.signUp(
           name: _nameController.text,
-          phoneNumber: _phoneController.text,
+          email: _emailController.text,
           password: _passwordController.text,
         );
 
@@ -101,14 +104,14 @@ class _AuthScreenState extends State<AuthScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Account created. Please confirm the code sent to your phone, then sign in.',
+                'Account created. Please check your email to confirm your account before signing in.',
               ),
             ),
           );
         }
       } else {
         await appState.signIn(
-          _phoneController.text,
+          _emailController.text,
           _passwordController.text,
         );
       }
@@ -283,11 +286,11 @@ class _AuthScreenState extends State<AuthScreen> {
                             const SizedBox(height: 12),
                           ],
                           TextFormField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
                             decoration: InputDecoration(
-                              labelText: 'Cellphone number',
-                              prefixIcon: const Icon(Icons.phone_android_rounded),
+                              labelText: 'Email address',
+                              prefixIcon: const Icon(Icons.email_outlined),
                               filled: true,
                               fillColor: const Color(0xFFF4F4F4),
                               border: OutlineInputBorder(
@@ -296,14 +299,15 @@ class _AuthScreenState extends State<AuthScreen> {
                               ),
                             ),
                             validator: (value) {
-                              final digits = AppState.normalizePhoneNumber(
-                                value ?? '',
-                              );
-                              if (digits.isEmpty) {
-                                return 'Please enter your cellphone number';
+                              final email = (value ?? '').trim();
+                              if (email.isEmpty) {
+                                return 'Please enter your email address';
                               }
-                              if (digits.length < 10) {
-                                return 'Enter a valid cellphone number';
+                              final emailRegex = RegExp(
+                                r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                              );
+                              if (!emailRegex.hasMatch(email)) {
+                                return 'Enter a valid email address';
                               }
                               return null;
                             },

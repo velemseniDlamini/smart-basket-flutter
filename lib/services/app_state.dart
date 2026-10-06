@@ -76,44 +76,62 @@ class AppState extends ChangeNotifier {
   }
 
   Future<bool> isBiometricsSupported() async {
-    final auth = LocalAuthentication();
-    final canCheck = await auth.canCheckBiometrics;
-    final isSupported = await auth.isDeviceSupported();
-    return canCheck && isSupported;
-  }
-
-  Future<bool> unlockWithBiometrics() async {
-    final auth = LocalAuthentication();
-    final canCheck = await auth.canCheckBiometrics;
-    final isSupported = await auth.isDeviceSupported();
-
-    if (!canCheck || !isSupported) {
+    if (kIsWeb) {
       return false;
     }
 
-    return auth.authenticate(
-      localizedReason: 'Unlock Smart Basket with Face ID or fingerprint',
-      biometricOnly: true,
-      persistAcrossBackgrounding: true,
-    );
+    try {
+      final auth = LocalAuthentication();
+      final canCheck = await auth.canCheckBiometrics;
+      final isSupported = await auth.isDeviceSupported();
+      return canCheck && isSupported;
+    } catch (_) {
+      return false;
+    }
   }
 
-  Future<supabase.AuthResponse> signIn(String phoneNumber, String password) {
-    final normalizedPhone = normalizePhoneNumber(phoneNumber);
+  Future<bool> unlockWithBiometrics() async {
+    if (kIsWeb) {
+      return false;
+    }
+
+    try {
+      final auth = LocalAuthentication();
+      final canCheck = await auth.canCheckBiometrics;
+      final isSupported = await auth.isDeviceSupported();
+
+      if (!canCheck || !isSupported) {
+        return false;
+      }
+
+      return await auth.authenticate(
+        localizedReason: 'Unlock Smart Basket with Face ID or fingerprint',
+        biometricOnly: true,
+        persistAcrossBackgrounding: true,
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<supabase.AuthResponse> signIn(String email, String password) async {
+    final trimmedEmail = email.trim();
+
     return _supabase.auth.signInWithPassword(
-      phone: normalizedPhone,
+      email: trimmedEmail,
       password: password,
     );
   }
 
   Future<supabase.AuthResponse> signUp({
     required String name,
-    required String phoneNumber,
+    required String email,
     required String password,
-  }) {
-    final normalizedPhone = normalizePhoneNumber(phoneNumber);
+  }) async {
+    final trimmedEmail = email.trim();
+
     return _supabase.auth.signUp(
-      phone: normalizedPhone,
+      email: trimmedEmail,
       password: password,
       data: {'full_name': name.trim()},
     );

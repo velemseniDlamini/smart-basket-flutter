@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/app_state.dart';
 import '../models/store.dart';
+import '../widgets/store_logo.dart';
 
 class StoreSelectionScreen extends StatelessWidget {
   const StoreSelectionScreen({super.key});
@@ -10,15 +11,7 @@ class StoreSelectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Smart Basket'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              context.read<AppState>().logout();
-            },
-          ),
-        ],
+        title: const Text('Choose a store'),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -26,8 +19,8 @@ class StoreSelectionScreen extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFFF8FAFC),
-              Color(0xFFE2E8F0),
+              Color(0xFFF7F8F5),
+              Color(0xFFE8ECE5),
             ],
           ),
         ),
@@ -91,24 +84,24 @@ class StoreSelectionScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: const Color(0xFFE8F5E9),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200),
+                    border: Border.all(color: const Color(0xFFC8E6C9)),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         Icons.info_outline,
-                        color: Colors.blue.shade600,
+                        color: Theme.of(context).colorScheme.primary,
                         size: 20,
                       ),
                       const SizedBox(width: 12),
-                      Expanded(
+                      const Expanded(
                         child: Text(
                           'Select your store to start scanning products with AI-powered text recognition',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.blue.shade700,
+                            color: Color(0xFF1B5E20),
                           ),
                         ),
                       ),
@@ -135,39 +128,23 @@ class _StoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+    return Material(
+      color: Colors.white,
+      elevation: 1,
+      shadowColor: Colors.black26,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Store icon
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: const Color(0xFF667eea).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(30),
-              ),
+            SizedBox(
+              height: 76,
               child: Center(
-                child: Text(
-                  store.icon,
-                  style: const TextStyle(fontSize: 28),
-                ),
+                child: StoreLogo(storeId: store.id),
               ),
             ),
-            const SizedBox(height: 12),
 
             // Store name
             Text(

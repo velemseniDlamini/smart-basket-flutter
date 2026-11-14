@@ -37,6 +37,11 @@ dependencies:
   printing: ^5.15.1
   pdf: ^3.13.1
   local_auth: ^3.0.2
+  geolocator: ^14.1.2
+  geocoding: ^5.0.1
+  url_launcher: ^6.3.3
+  barcode_widget: ^2.0.4
+  webview_flutter: ^4.14.1
 
 dev_dependencies:
   flutter_test:

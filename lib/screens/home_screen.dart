@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/app_state.dart';
 import 'auth_screen.dart';
-import 'store_selection_screen.dart';
-import 'shopping_screen.dart';
+import 'location_permission_screen.dart';
+import 'main_shell.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -12,18 +12,23 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, child) {
-        // Show authentication screen if not logged in
         if (!appState.isAuthenticated) {
           return const AuthScreen();
         }
 
-        // Show shopping screen if store is selected
-        if (appState.selectedStore != null) {
-          return const ShoppingScreen();
+        // Still loading whether the location prompt was already shown.
+        if (appState.locationPromptDone == null) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
 
-        // Show store selection screen
-        return const StoreSelectionScreen();
+        // Ask for location once, right after signing up or in.
+        if (!appState.locationPromptDone!) {
+          return const LocationPermissionScreen();
+        }
+
+        return const MainShell();
       },
     );
   }

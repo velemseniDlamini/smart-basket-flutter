@@ -13,6 +13,8 @@ const supabasePublishableKey = String.fromEnvironment(
   defaultValue: 'sb_publishable_1UXsfNITpx2H3hg9Oq0muA_T5C8LBju',
 );
 
+const brandGreen = Color(0xFF2E7D32);
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(
@@ -32,20 +34,28 @@ class SmartBasketApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Smart Basket',
         theme: ThemeData(
-          primarySwatch: Colors.blue,
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF667eea),
+            seedColor: brandGreen,
+            primary: brandGreen,
             brightness: Brightness.light,
           ),
+          scaffoldBackgroundColor: const Color(0xFFF5F6F3),
           appBarTheme: const AppBarTheme(
-            backgroundColor: Color(0xFF667eea),
+            backgroundColor: brandGreen,
             foregroundColor: Colors.white,
             elevation: 0,
           ),
+          floatingActionButtonTheme: const FloatingActionButtonThemeData(
+            backgroundColor: brandGreen,
+            foregroundColor: Colors.white,
+          ),
+          snackBarTheme: const SnackBarThemeData(
+            behavior: SnackBarBehavior.floating,
+          ),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF667eea),
+              backgroundColor: brandGreen,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),

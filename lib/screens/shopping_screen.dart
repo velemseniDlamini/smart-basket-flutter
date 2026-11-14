@@ -6,7 +6,9 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../services/app_state.dart';
 import '../widgets/camera_scanner.dart';
-import '../widgets/web_camera_scanner.dart';
+import '../widgets/store_logo.dart';
+import '../widgets/web_camera_scanner_stub.dart'
+    if (dart.library.js_interop) '../widgets/web_camera_scanner.dart';
 import '../models/detected_product.dart';
 import '../utils/currency.dart';
 
@@ -29,13 +31,13 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
             title: Text(appState.selectedStore?.name ?? 'Shopping'),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
-              onPressed: () {
-                appState.clearStoreSelection();
-              },
+              tooltip: 'Change store',
+              onPressed: () => _confirmLeaveStore(context, appState),
             ),
             actions: [
               if (appState.basketItemCount > 0)
                 IconButton(
+                  tooltip: 'View basket',
                   icon: Badge(
                     label: Text('${appState.basketItemCount}'),
                     child: const Icon(Icons.shopping_cart),
@@ -81,7 +83,6 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                   },
                   icon: const Icon(Icons.camera_alt),
                   label: const Text('Scan Products'),
-                  backgroundColor: const Color(0xFF667eea),
                 ),
         );
       },
@@ -95,8 +96,8 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Color(0xFFF8FAFC),
-            Color(0xFFE2E8F0),
+            Color(0xFFF7F8F5),
+            Color(0xFFE8ECE5),
           ],
         ),
       ),
@@ -122,17 +123,12 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF667eea).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: Center(
-                        child: Text(
-                          appState.selectedStore?.icon ?? '🛒',
-                          style: const TextStyle(fontSize: 28),
+                    SizedBox(
+                      width: 72,
+                      height: 72,
+                      child: FittedBox(
+                        child: StoreLogo(
+                          storeId: appState.selectedStore?.id ?? '',
                         ),
                       ),
                     ),
@@ -173,7 +169,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                       'Items',
                       '${appState.basketItemCount}',
                       Icons.shopping_basket,
-                      Colors.blue,
+                      const Color(0xFF2E7D32),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -182,7 +178,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                       'Total',
                       formatZar(appState.basketTotal),
                       Icons.payments_outlined,
-                      Colors.green,
+                      const Color(0xFFF9A825),
                     ),
                   ),
                 ],
@@ -386,8 +382,8 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
         initialChildSize: 0.7,
         maxChildSize: 0.9,
         minChildSize: 0.5,
-        builder: (context, scrollController) {
-          return Container(
+        builder: (context, scrollController) => Consumer<AppState>(
+          builder: (context, appState, _) => Container(
             decoration: const BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -445,8 +441,32 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                           itemCount: appState.shoppingBasket.length,
                           itemBuilder: (context, index) {
                             final product = appState.shoppingBasket[index];
-                            return _buildFullBasketItem(
-                                context, appState, product, index);
+                            return Dismissible(
+                              key: ObjectKey(product),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 20),
+                                alignment: Alignment.centerRight,
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade400,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              onDismissed: (_) {
+                                appState.removeProductFromBasket(index);
+                                if (appState.basketItemCount == 0) {
+                                  Navigator.pop(context);
+                                }
+                              },
+                              child: _buildFullBasketItem(
+                                  context, appState, product, index),
+                            );
                           },
                         ),
                 ),
@@ -471,7 +491,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF667eea),
+                                color: Color(0xFF2E7D32),
                               ),
                             ),
                           ],
@@ -493,8 +513,8 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                 ],
               ],
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
@@ -568,6 +588,34 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmLeaveStore(
+      BuildContext context, AppState appState) async {
+    if (appState.basketItemCount == 0) {
+      appState.clearStoreSelection();
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Leave this store?'),
+        content: Text(
+          'Your basket has ${appState.basketItemCount} items. Changing store will empty it.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep shopping'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Empty basket'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) appState.clearStoreSelection();
   }
 
   void _showProductAddedSnackBar(

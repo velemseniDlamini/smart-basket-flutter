@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/catalog_product.dart';
 import '../models/store.dart';
+import '../services/live_catalog_service.dart' show LiveProduct;
 import '../services/app_state.dart';
-import '../services/live_catalog_service.dart';
 import '../utils/links.dart';
 import '../widgets/product_card.dart';
+import '../widgets/spar_specials.dart';
 import '../widgets/store_logo.dart';
 
 const _ink = Color(0xFF1E2B22);
@@ -31,13 +32,17 @@ class _ProductsTabState extends State<ProductsTab> {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    final store = _store ?? appState.selectedStore ?? Store.availableStores.first;
+    final store =
+        _store ?? appState.selectedStore ?? Store.availableStores.first;
     final category = appState.productCategory;
     final query = _searchController.text.trim().toLowerCase();
     final products = CatalogProduct.all.where((product) {
       if (category != null && product.category != category) return false;
       return query.isEmpty || product.name.toLowerCase().contains(query);
     }).toList();
+    // SPAR has no online product search, so instead of generic products
+    // (which would have no real photo or price) show its live specials.
+    final showSparSpecials = store.id == 'spar' && supportsInAppWebView;
 
     return SafeArea(
       child: CustomScrollView(
@@ -109,239 +114,141 @@ class _ProductsTabState extends State<ProductsTab> {
               ),
             ),
           ),
-          if (store.id == 'spar' && supportsInAppWebView)
-            const SliverToBoxAdapter(child: _SparSpecialsStrip()),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 64,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
-                children: [
-                  _CategoryChip(
-                    label: 'All',
-                    selected: category == null,
-                    onTap: () => appState.setProductCategory(null),
-                  ),
-                  for (final option in ProductCategory.all)
-                    _CategoryChip(
-                      label: option.name,
-                      selected: category == option.name,
-                      onTap: () => appState.setProductCategory(option.name),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          if (query.isNotEmpty && store.hasOnlineCatalogue)
+          if (showSparSpecials)
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-                child: ListTile(
-                  tileColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  leading: const Icon(Icons.travel_explore_rounded),
-                  title: Text(
-                    'Search ${store.websiteLabel} for "${_searchController.text.trim()}"',
-                  ),
-                  trailing: const Icon(Icons.open_in_new_rounded, size: 18),
-                  onTap: () => openExternal(
-                    context,
-                    store.productUrl(_searchController.text),
-                    title: 'Search: ${_searchController.text.trim()}',
-                  ),
-                ),
-              ),
-            ),
-          if (products.isEmpty)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(
-                child: Text(
-                  'No matching products',
-                  style: TextStyle(color: _muted, fontSize: 15),
-                ),
+              child: SparSpecialsBuilder(
+                builder: (context, specials) =>
+                    _SparSpecialsGrid(specials: specials, query: query),
               ),
             )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-              sliver: SliverGrid.builder(
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 200,
-                  mainAxisExtent: 240,
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 14,
+          else ...[
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 64,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+                  children: [
+                    _CategoryChip(
+                      label: 'All',
+                      selected: category == null,
+                      onTap: () => appState.setProductCategory(null),
+                    ),
+                    for (final option in ProductCategory.all)
+                      _CategoryChip(
+                        label: option.name,
+                        selected: category == option.name,
+                        onTap: () => appState.setProductCategory(option.name),
+                      ),
+                  ],
                 ),
-                itemCount: products.length,
-                itemBuilder: (context, index) =>
-                    ProductCard(product: products[index], store: store),
               ),
             ),
+            if (query.isNotEmpty && store.hasOnlineCatalogue)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                  child: ListTile(
+                    tileColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    leading: const Icon(Icons.travel_explore_rounded),
+                    title: Text(
+                      'Search ${store.websiteLabel} for "${_searchController.text.trim()}"',
+                    ),
+                    trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+                    onTap: () => openExternal(
+                      context,
+                      store.productUrl(_searchController.text),
+                      title: 'Search: ${_searchController.text.trim()}',
+                    ),
+                  ),
+                ),
+              ),
+            if (products.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Text(
+                    'No matching products',
+                    style: TextStyle(color: _muted, fontSize: 15),
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                sliver: SliverGrid.builder(
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 200,
+                    mainAxisExtent: 240,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                  ),
+                  itemCount: products.length,
+                  itemBuilder: (context, index) =>
+                      ProductCard(product: products[index], store: store),
+                ),
+              ),
+          ],
         ],
       ),
     );
   }
 }
 
-/// SPAR's current national specials, read live from spar.co.za.
-class _SparSpecialsStrip extends StatefulWidget {
-  const _SparSpecialsStrip();
+class _SparSpecialsGrid extends StatelessWidget {
+  final List<LiveProduct> specials;
+  final String query;
 
-  @override
-  State<_SparSpecialsStrip> createState() => _SparSpecialsStripState();
-}
-
-class _SparSpecialsStripState extends State<_SparSpecialsStrip> {
-  @override
-  void initState() {
-    super.initState();
-    LiveCatalogService.instance.requestSparSpecials();
-  }
+  const _SparSpecialsGrid({required this.specials, required this.query});
 
   @override
   Widget build(BuildContext context) {
-    final service = LiveCatalogService.instance;
-    final store = Store.availableStores.firstWhere((s) => s.id == 'spar');
-
-    return ListenableBuilder(
-      listenable: service,
-      builder: (context, _) {
-        final specials = service.sparSpecials;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 18, 20, 10),
-              child: Text(
-                "This week's SPAR specials",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: _ink,
-                ),
-              ),
-            ),
-            SizedBox(
-              height: 250,
-              child: specials == null
-                  ? Center(
-                      child: service.sparSpecialsLoading
-                          ? const CircularProgressIndicator(strokeWidth: 2)
-                          : const Text(
-                              'Specials are unavailable right now',
-                              style: TextStyle(color: _muted),
-                            ),
-                    )
-                  : ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: specials.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 14),
-                      itemBuilder: (context, index) => _SparSpecialCard(
-                        special: specials[index],
-                        onTap: () => openExternal(
-                          context,
-                          Uri.parse(store.specialsUrl),
-                          title: 'SPAR specials',
-                        ),
-                      ),
-                    ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _SparSpecialCard extends StatelessWidget {
-  final LiveProduct special;
-  final VoidCallback onTap;
-
-  const _SparSpecialCard({required this.special, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    const fallback = Icon(Icons.local_offer_outlined, size: 40);
-
-    return SizedBox(
-      width: 170,
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: special.imageUrl == null
-                            ? fallback
-                            : Image.network(
-                                special.imageUrl!,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => fallback,
-                              ),
-                      ),
-                      if (special.badge != null)
-                        Positioned(
-                          left: 0,
-                          top: 0,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFD71920),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              special.badge!,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  special.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    height: 1.2,
-                    fontWeight: FontWeight.w700,
-                    color: _ink,
-                  ),
-                ),
-                if (special.size != null)
-                  Text(
-                    special.size!,
-                    style: const TextStyle(fontSize: 11, color: _muted),
-                  ),
-                const SizedBox(height: 6),
-                LivePrice(product: special),
-              ],
+    final matches = specials
+        .where((s) => query.isEmpty || s.name.toLowerCase().contains(query))
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+          child: Text(
+            "This week's SPAR specials (${matches.length})",
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: _ink,
             ),
           ),
         ),
-      ),
+        if (matches.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(
+              child: Text(
+                'No SPAR specials match your search',
+                style: TextStyle(color: _muted, fontSize: 15),
+              ),
+            ),
+          )
+        else
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 200,
+              mainAxisExtent: 260,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+            ),
+            itemCount: matches.length,
+            itemBuilder: (context, index) =>
+                SparSpecialCard(special: matches[index]),
+          ),
+      ],
     );
   }
 }
@@ -368,7 +275,8 @@ class _OfficialSiteBanner extends StatelessWidget {
           Uri.parse(
             store.hasOnlineCatalogue ? store.websiteUrl : store.specialsUrl,
           ),
-          title: store.hasOnlineCatalogue ? store.name : '${store.name} specials',
+          title:
+              store.hasOnlineCatalogue ? store.name : '${store.name} specials',
         ),
         child: Padding(
           padding: const EdgeInsets.all(14),

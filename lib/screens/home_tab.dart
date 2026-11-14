@@ -4,7 +4,9 @@ import '../models/catalog_product.dart';
 import '../models/store.dart';
 import '../services/app_state.dart';
 import '../services/location_service.dart';
+import '../utils/links.dart';
 import '../widgets/product_card.dart';
+import '../widgets/spar_specials.dart';
 import 'savings_cards_screen.dart';
 import '../widgets/store_logo.dart';
 
@@ -182,23 +184,43 @@ class HomeTab extends StatelessWidget {
             ),
           ),
           _SectionTitle(
-            'Popular at ${popularStore.name}',
+            popularStore.id == 'spar' && supportsInAppWebView
+                ? 'Specials at SPAR'
+                : 'Popular at ${popularStore.name}',
             action: 'See all',
             onAction: () => appState.showProducts(),
           ),
-          SizedBox(
-            height: 240,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: popular.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 14),
-              itemBuilder: (context, index) => SizedBox(
-                width: 160,
-                child: ProductCard(product: popular[index], store: popularStore),
+          if (popularStore.id == 'spar' && supportsInAppWebView)
+            SparSpecialsBuilder(
+              builder: (context, specials) => SizedBox(
+                height: 260,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: specials.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 14),
+                  itemBuilder: (context, index) => SizedBox(
+                    width: 160,
+                    child: SparSpecialCard(special: specials[index]),
+                  ),
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: 240,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                itemCount: popular.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 14),
+                itemBuilder: (context, index) => SizedBox(
+                  width: 160,
+                  child:
+                      ProductCard(product: popular[index], store: popularStore),
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -249,7 +271,8 @@ class _LocationHeader extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const Icon(Icons.keyboard_arrow_down_rounded, color: _ink),
+                      const Icon(Icons.keyboard_arrow_down_rounded,
+                          color: _ink),
                     ],
                   ),
                 ],

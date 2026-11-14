@@ -28,5 +28,7 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSLocationUsageDescription</key>
+	<string>Smart Basket uses your location to show where you are shopping and find nearby stores.</string>
 </dict>
 </plist>
